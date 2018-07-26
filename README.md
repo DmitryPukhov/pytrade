@@ -1,7 +1,8 @@
 # pytrade
 
 Trading robots written in Python. Contain connector to broker client terminal to read data and make orders. 
-My broker's terminal is [Quik](https://arqatech.com/en/products/quik/). Also  socket based interop library [QuikSocketTransfer] (https://github.com/Arseniys1/QuikSocketTransfer) required.
+My broker's terminal is [Quik](https://arqatech.com/en/products/quik/). 
+Also  socket based interop library [QuikSocketTransfer](https://github.com/Arseniys1/QuikSocketTransfer) required.
 
 ## Prerequisites
 Robot and broker's terminal can be the on same or different machines. 
