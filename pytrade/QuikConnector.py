@@ -10,6 +10,10 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
+    _MSG_ID_AUTH = 'msg_auth'
+    _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
+    _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
+
     _delimiter: str = 'message:'
     _buf_size: int = 65536
     _sock: socket = None
@@ -18,14 +22,6 @@ class QuikConnector:
 
     # Main security to get price/vol of
     sec_code = None
-
-    _MSG_ID_AUTH = 'msg_auth'
-    _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
-    _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
-
-    # Mapping datasource id -> security code, like 1 - SBER
-    # datasource id comes from quik lua, it's integer. Need to know which instrument is it
-    # _sec_code_by_ds_id = {}
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1'):
         """ Construct the class for host and port """
@@ -63,6 +59,7 @@ class QuikConnector:
             raise ConnectionError("Quik LUA authentication failed")
         self._connected = True
         self._logger.info('Connected')
+
         # If authenticated, subscribe to data
         self._create_datasource(self.sec_code)
 
@@ -100,6 +97,8 @@ class QuikConnector:
 
     def run(self):
         """ Connect and run message processing loop """
+
+        # Connecting
         self._connect()
         self._auth()
 
@@ -107,7 +106,7 @@ class QuikConnector:
         try:
             while True:
                 data = self._sock.recv(self._buf_size).decode()
-                # self._logger.debug('Got packet: %s' % data)
+                # Received data can contain multiple messages
                 data_items = data.split(self._delimiter)
                 for data_item in data_items:
                     if not data_item:
