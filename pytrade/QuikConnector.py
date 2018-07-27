@@ -1,7 +1,6 @@
-import socket
 import json
 import logging
-import sys
+import socket
 from logging import Logger
 
 
@@ -15,6 +14,10 @@ class QuikConnector:
     _buf_size: int = 65536
     _sock: socket = None
     _logger: Logger = None
+    _connected = False
+
+    # Main security to get price/vol of
+    sec_code = None
 
     _MSG_ID_AUTH = 'msg_auth'
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
@@ -22,7 +25,7 @@ class QuikConnector:
 
     # Mapping datasource id -> security code, like 1 - SBER
     # datasource id comes from quik lua, it's integer. Need to know which instrument is it
-    _sec_code_by_ds_id = {}
+    # _sec_code_by_ds_id = {}
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1'):
         """ Construct the class for host and port """
@@ -32,12 +35,13 @@ class QuikConnector:
         self._port = port
         self._passwd = passwd
         self._sock: socket = None
+        self.sec_code = 'RIU8'
 
         # Callbacks handlers for messages. One callback for one message id.
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource,
-                           self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
-                           'callback': self._on_data}
+                           # self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
+                           'callback': self._callback}
 
     def _connect(self):
         """ Connect and authorize """
@@ -55,78 +59,44 @@ class QuikConnector:
     def _on_auth(self, msg):
         """Authenticated event callback"""
         auth_result = msg['result'][0]
-        self._logger.info('Auth result: %s' % auth_result)
         if not auth_result:
-            raise ConnectionError("Quik LUA authentication failed")  # We got "authenticated Ok" message, exit auth loop
-        # If authenticated, subscribe to data and receive it
-        self._create_datasource('SBER')
+            raise ConnectionError("Quik LUA authentication failed")
+        self._connected = True
+        self._logger.info('Connected')
+        # If authenticated, subscribe to data
+        self._create_datasource(self.sec_code)
 
     def _create_datasource(self, sec_code):
         """
-        Method from subscription sequence: create_datasource, set_update_callback
-        Callbacks: on_create_datasource, on_set_update_callback, on_update
+        After CreateDataSource method call we'll receive OnAllTrade messages
         """
-        # msg = '{"id": %s,"method": "CreateDataSource","args": ["SPBFUT", "SiU8", "INTERVAL_TICK"]}' \
         msg_id = '%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, sec_code)
-        msg = '{"id": "%s","method": "CreateDataSource","args": ["TQBR", "%s", "INTERVAL_TICK"]}' \
+        msg = '{"id": "%s","method": "CreateDataSource","args": ["SPBFUT", "%s", "INTERVAL_TICK"]}' \
               % (msg_id, sec_code)
-        self._callbacks[msg_id] = self._on_create_datasource
         self._logger.info('Sending msg: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_create_datasource(self, msg):
         """
-        Callback from subscription sequence: create_datasource, set_update_callback
-        Callbacks: on_create_datasource, on_set_update_callback, on_update
+        Log created data source id or error message
         """
-        self._logger.info('Got msg: %s' % msg)
-
-        # Update ds id -> security code map
-        msg_id = msg['id']
+        # Result contain data sourc id or error text. Print it to log
         datasource_id = msg['result'][0]
-        self._sec_code_by_ds_id[datasource_id] = msg_id
+        self._logger.info('Created datasource id: %s' % datasource_id)
 
-        self._set_update_callback(datasource_id)
-
-    def _set_update_callback(self, datasource_id):
+    def _callback(self, msg):
         """
-        Method from subscription sequence: create_datasourdce, set_update_callback
-        Callbacks: on_create_datasource, on_set_update_callback, on_update
+        The most important method in all the connector: processes received price/vol data
+        :param msg: message from quik, already decoded to a dictionary
+        :return: None
         """
-        msg = '{"id": "%s","method": "SetUpdateCallback","args": ["%s"] }' % (
-            self._MSG_ID_SET_UPDATE_CALLBACK, datasource_id)
-        self._logger.info('Sending msg: %s' % msg)
-        self._sock.sendall(bytes(msg, 'UTF-8'))
-
-    def _on_set_update_callback(self, msg):
-        """
-        Callback from subscription sequence: create_datasourdce, set_update_callback
-        Callbacks: on_create_datasource, on_set_update_callback, on_update
-        """
-        self._logger.info('Got set update callback responce. Msg: %s' % msg)
-        result = msg['result'][0]
-        self._logger.info('Result: %s' % result)
-        if not result:
-            raise Exception('Update callback not created.')
-
-    def _on_data(self, msg):
-        """
-        Quotes receiver method.
-        It is callback from subscription sequence: create_datasourdce, set_update_callback
-        Callbacks: on_create_datasource, on_set_update_callback, on_update
-        """
-        self._logger.debug('Got callback msg: %s' % msg)
-        ds_id = msg.get('ds_id')
-        if not ds_id:
-            self._logger.debug('No price data in the message')
+        # We need ensure first that this message contains our security with it's price/volume
+        if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
             return
-        sec_code = self._sec_code_by_ds_id.get(ds_id)
-        value = msg.get('result')
-        if not sec_code:
-            self._logger.debug('Unknown data source id %s', ds_id)
-            return
-
-        self._logger.info('Got ds_id: %s, security code: %s, value: %s' % (ds_id, sec_code, value))
+        # It is really our price/volume, get them
+        price = msg['result']['price']
+        vol = msg['result']['qty']
+        self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
 
     def run(self):
         """ Connect and run message processing loop """
@@ -137,7 +107,7 @@ class QuikConnector:
         try:
             while True:
                 data = self._sock.recv(self._buf_size).decode()
-                self._logger.debug('Got packet: %s' % data)
+                # self._logger.debug('Got packet: %s' % data)
                 data_items = data.split(self._delimiter)
                 for data_item in data_items:
                     if not data_item:
@@ -145,7 +115,6 @@ class QuikConnector:
                     # Parse single message
                     try:
                         msg: dict = json.loads(data_item)
-                        self._logger.debug('Extracted message: %s' % str(msg))
                         # Call callback for this message
                         callback = self._callbacks.get(msg['id'])
                         if callback:
@@ -158,8 +127,9 @@ class QuikConnector:
             self._logger.info("Interrupted by user")
 
         # Exiting
+        self._connected = False
         self._sock.close()
-        self._logger.info('Socket closed')
+        self._logger.info('Disconnected')
 
 
 if __name__ == "__main__":
