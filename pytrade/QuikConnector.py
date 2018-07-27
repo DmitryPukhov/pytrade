@@ -16,9 +16,13 @@ class QuikConnector:
     _sock: socket = None
     _logger: Logger = None
 
-    _MSG_ID_AUTH: int = 1
-    _MSG_ID_CREATE_DATASOURCE: int = 2
-    _MSG_ID_SET_UPDATE_CALLBACK: int = 3
+    _MSG_ID_AUTH = 'msg_auth'
+    _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
+    _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
+
+    # Mapping datasource id -> security code, like 1 - SBER
+    # datasource id comes from quik lua, it's integer. Need to know which instrument is it
+    _sec_code_by_ds_id = {}
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1'):
         """ Construct the class for host and port """
@@ -29,7 +33,7 @@ class QuikConnector:
         self._passwd = passwd
         self._sock: socket = None
 
-    # Callbacks handlers for messages. One callback for one message id.
+        # Callbacks handlers for messages. One callback for one message id.
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource,
                            self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
@@ -44,7 +48,7 @@ class QuikConnector:
 
     def _auth(self):
         """ Authorize at Quik Lua """
-        msg = '{ "id": %s , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
+        msg = '{ "id": "%s" , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
         self._logger.debug('Sending message: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
@@ -55,27 +59,33 @@ class QuikConnector:
         if not auth_result:
             raise ConnectionError("Quik LUA authentication failed")  # We got "authenticated Ok" message, exit auth loop
         # If authenticated, subscribe to data and receive it
-        self._create_datasource()
+        self._create_datasource('SBER')
 
-    def _create_datasource(self):
+    def _create_datasource(self, sec_code):
         """
-        Method from subscription sequence: create_datasourdce, set_update_callback
+        Method from subscription sequence: create_datasource, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        #msg = '{"id": %s,"method": "CreateDataSource","args": ["SPBFUT", "SiU8", "INTERVAL_TICK"]}' \
-        msg = '{"id": %s,"method": "CreateDataSource","args": ["TQBR", "SBER", "INTERVAL_TICK"]}' \
-                      % self._MSG_ID_CREATE_DATASOURCE
-        self._logger.debug('Sending msg: %s' % msg)
+        # msg = '{"id": %s,"method": "CreateDataSource","args": ["SPBFUT", "SiU8", "INTERVAL_TICK"]}' \
+        msg_id = '%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, sec_code)
+        msg = '{"id": "%s","method": "CreateDataSource","args": ["TQBR", "%s", "INTERVAL_TICK"]}' \
+              % (msg_id, sec_code)
+        self._callbacks[msg_id] = self._on_create_datasource
+        self._logger.info('Sending msg: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_create_datasource(self, msg):
         """
-        Callback from subscription sequence: create_datasourdce, set_update_callback
+        Callback from subscription sequence: create_datasource, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
+        self._logger.info('Got msg: %s' % msg)
+
+        # Update ds id -> security code map
+        msg_id = msg['id']
         datasource_id = msg['result'][0]
-        self._logger.debug('Got msg: %s' % msg)
-        self._logger.debug('Datasource id: %s' % datasource_id)
+        self._sec_code_by_ds_id[datasource_id] = msg_id
+
         self._set_update_callback(datasource_id)
 
     def _set_update_callback(self, datasource_id):
@@ -83,12 +93,9 @@ class QuikConnector:
         Method from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        # Add this datasource id to callbacks
-        self._callbacks[datasource_id] = self._on_data
-
-        msg = '{"id": %s,"method": "SetUpdateCallback","args": [%s] }' % (
+        msg = '{"id": "%s","method": "SetUpdateCallback","args": ["%s"] }' % (
             self._MSG_ID_SET_UPDATE_CALLBACK, datasource_id)
-        self._logger.debug('Sending msg: %s' % msg)
+        self._logger.info('Sending msg: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_set_update_callback(self, msg):
@@ -96,7 +103,7 @@ class QuikConnector:
         Callback from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        self._logger.debug('Got set update callback responce. Msg: %s' % msg)
+        self._logger.info('Got set update callback responce. Msg: %s' % msg)
         result = msg['result'][0]
         self._logger.info('Result: %s' % result)
         if not result:
@@ -113,7 +120,13 @@ class QuikConnector:
         if not ds_id:
             self._logger.debug('No price data in the message')
             return
-        self._logger.debug('Got ds_id: %s, data: %s' % (ds_id, msg['result']))
+        sec_code = self._sec_code_by_ds_id.get(ds_id)
+        value = msg.get('result')
+        if not sec_code:
+            self._logger.debug('Unknown data source id %s', ds_id)
+            return
+
+        self._logger.info('Got ds_id: %s, security code: %s, value: %s' % (ds_id, sec_code, value))
 
     def run(self):
         """ Connect and run message processing loop """
@@ -151,7 +164,7 @@ class QuikConnector:
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
         datefmt="%Y-%m-%d %H:%M:%S")
     # execute only if run as a script
