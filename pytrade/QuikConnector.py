@@ -2,6 +2,7 @@ import socket
 import json
 import logging
 import sys
+from logging import Logger
 
 
 class QuikConnector:
@@ -10,45 +11,47 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
+    _delimiter: str = 'message:'
+    _buf_size: int = 65536
+    _sock: socket = None
+    _logger: Logger = None
 
-    _MSG_ID_AUTH = 1
-    _MSG_ID_CREATE_DATASOURCE = 2
-    _MSG_ID_SET_UPDATE_CALLBACK = 3
+    _MSG_ID_AUTH: int = 1
+    _MSG_ID_CREATE_DATASOURCE: int = 2
+    _MSG_ID_SET_UPDATE_CALLBACK: int = 3
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1'):
         """ Construct the class for host and port """
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.host = host
-        self.port = port
-        self.passwd = passwd
-        self.buf_size = 65536
-        self.delimiter = 'message:'
-        self.timeout_sec: float = 30.0
-        self.sock: socket = None
-        # Callbacks handlers for messages. One callback for one message id.
-        self._callbacks = {self._MSG_ID_AUTH: self._on_auth
-            , self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource
-            , self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback
-            , 'callback': self._on_update}
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.setLevel(logging.DEBUG)
+        self._host = host
+        self._port = port
+        self._passwd = passwd
+        self._sock: socket = None
 
-    def connect(self):
+    # Callbacks handlers for messages. One callback for one message id.
+        self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
+                           self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource,
+                           self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
+                           'callback': self._on_data}
+
+    def _connect(self):
         """ Connect and authorize """
-        self.logger.info("Connecting to " + self.host + ":" + str(self.port))
-        self.sock = socket.socket()
-        self.sock.connect((self.host, self.port))
-        self.logger.info("Connected to " + self.host + ":" + str(self.port))
+        self._logger.info("Connecting to " + self._host + ":" + str(self._port))
+        self._sock = socket.socket()
+        self._sock.connect((self._host, self._port))
+        self._logger.info("Connected to " + self._host + ":" + str(self._port))
 
-    def auth(self):
+    def _auth(self):
         """ Authorize at Quik Lua """
-        msg = '{ "id": %s , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self.passwd)
-        self.logger.debug('Sending message: %s' % msg)
-        self.sock.sendall(bytes(msg, 'UTF-8'))
+        msg = '{ "id": %s , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
+        self._logger.debug('Sending message: %s' % msg)
+        self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_auth(self, msg):
         """Authenticated event callback"""
         auth_result = msg['result'][0]
-        self.logger.info('Auth result: %s' % auth_result)
+        self._logger.info('Auth result: %s' % auth_result)
         if not auth_result:
             raise ConnectionError("Quik LUA authentication failed")  # We got "authenticated Ok" message, exit auth loop
         # If authenticated, subscribe to data and receive it
@@ -59,9 +62,11 @@ class QuikConnector:
         Method from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        msg = '{"id": %s,"method": "CreateDataSource","args": ["SPBFUT", "SiU8", "INTERVAL_TICK"]}' % self._MSG_ID_CREATE_DATASOURCE
-        self.logger.debug('Sending msg: %s' % msg)
-        self.sock.sendall(bytes(msg, 'UTF-8'))
+        #msg = '{"id": %s,"method": "CreateDataSource","args": ["SPBFUT", "SiU8", "INTERVAL_TICK"]}' \
+        msg = '{"id": %s,"method": "CreateDataSource","args": ["TQBR", "SBER", "INTERVAL_TICK"]}' \
+                      % self._MSG_ID_CREATE_DATASOURCE
+        self._logger.debug('Sending msg: %s' % msg)
+        self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_create_datasource(self, msg):
         """
@@ -69,79 +74,79 @@ class QuikConnector:
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
         datasource_id = msg['result'][0]
-        self.logger.debug('Got msg: %s' % msg)
-        self.logger.debug('Datasource id: %s' % datasource_id)
-        self.set_update_callback(datasource_id)
+        self._logger.debug('Got msg: %s' % msg)
+        self._logger.debug('Datasource id: %s' % datasource_id)
+        self._set_update_callback(datasource_id)
 
-    def set_update_callback(self, datasource_id):
+    def _set_update_callback(self, datasource_id):
         """
         Method from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
         # Add this datasource id to callbacks
-        self._callbacks[datasource_id] = self._on_update
+        self._callbacks[datasource_id] = self._on_data
 
         msg = '{"id": %s,"method": "SetUpdateCallback","args": [%s] }' % (
             self._MSG_ID_SET_UPDATE_CALLBACK, datasource_id)
-        self.logger.debug('Sending msg: %s' % msg)
-        self.sock.sendall(bytes(msg, 'UTF-8'))
+        self._logger.debug('Sending msg: %s' % msg)
+        self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_set_update_callback(self, msg):
         """
         Callback from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        self.logger.debug('Got set update callback responce. Msg: %s' % msg)
+        self._logger.debug('Got set update callback responce. Msg: %s' % msg)
         result = msg['result'][0]
-        self.logger.info('Result: %s' % result)
+        self._logger.info('Result: %s' % result)
         if not result:
             raise Exception('Update callback not created.')
 
-    def _on_update(self, msg):
+    def _on_data(self, msg):
         """
         Quotes receiver method.
         It is callback from subscription sequence: create_datasourdce, set_update_callback
         Callbacks: on_create_datasource, on_set_update_callback, on_update
         """
-        self.logger.debug('Got callback msg: %s' % msg)
+        self._logger.debug('Got callback msg: %s' % msg)
         ds_id = msg.get('ds_id')
         if not ds_id:
-            self.logger.debug('No price data in the message')
+            self._logger.debug('No price data in the message')
             return
-        self.logger.debug('Got data: %s' % msg['result'])
+        self._logger.debug('Got ds_id: %s, data: %s' % (ds_id, msg['result']))
 
     def run(self):
         """ Connect and run message processing loop """
-        self.connect()
-        self.auth()
+        self._connect()
+        self._auth()
 
-        # Message processing loo9p
+        # Message processing loop
         try:
             while True:
-                data = self.sock.recv(self.buf_size).decode()
-                self.logger.debug('Got data: %s' % data)
-                data_items = data.split(self.delimiter)
+                data = self._sock.recv(self._buf_size).decode()
+                self._logger.debug('Got packet: %s' % data)
+                data_items = data.split(self._delimiter)
                 for data_item in data_items:
                     if not data_item:
                         continue  # Skip empty '' messages
                     # Parse single message
                     try:
                         msg: dict = json.loads(data_item)
-                        self.logger.debug('Extracted message: %s' % str(msg))
+                        self._logger.debug('Extracted message: %s' % str(msg))
                         # Call callback for this message
                         callback = self._callbacks.get(msg['id'])
                         if callback:
                             callback(msg)
 
-                    except json.JSONDecodeError:
-                        self.logger.error('Bad message: %s' % sys.exc_info())
+                    except json.decoder.JSONDecodeError:
+                        self._logger.exception('Bad message')
 
         except KeyboardInterrupt:
-            self.logger.info("Interrupted by user")
+            self._logger.info("Interrupted by user")
 
         # Exiting
-        self.sock.close()
-        self.logger.info('Socket closed')
+        self._sock.close()
+        self._logger.info('Socket closed')
 
 
 if __name__ == "__main__":
