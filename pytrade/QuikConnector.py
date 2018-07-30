@@ -120,7 +120,7 @@ class QuikConnector:
                             callback(msg)
 
                     except json.decoder.JSONDecodeError:
-                        self._logger.exception('Bad message')
+                        self._logger.exception('Bad message packet %s, message %s' % (data, data_item))
 
         except KeyboardInterrupt:
             self._logger.info("Interrupted by user")
