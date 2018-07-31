@@ -1,5 +1,8 @@
 import logging
+
 from pytrade.connector.quik.QuikConnector import QuikConnector
+from pytrade.connector.quik.QuikBroker import QuikBroker
+from pytrade.connector.quik.QuikFeed import QuikFeed
 
 
 class App:
@@ -7,13 +10,21 @@ class App:
     Main application. Build strategy and run.
     """
 
-    @staticmethod
-    def main():
+    _logger = logging.getLogger(__name__)
+
+    def __init__(self):
+        self._logger.info("Initializing the App")
+        quik = QuikConnector()
+        self._broker = QuikBroker(quik)
+        self._feed = QuikFeed(quik)
+
+    def main(self):
         """
         Application entry point
         :return: None
         """
-        QuikConnector().run()
+        self._feed.start()
+        self._broker.start()
 
 
 if __name__ == "__main__":

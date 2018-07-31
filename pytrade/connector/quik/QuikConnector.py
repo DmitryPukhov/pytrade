@@ -1,6 +1,7 @@
 import json
 import logging
 import socket
+from enum import Enum
 
 
 class QuikConnector:
@@ -9,7 +10,12 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
-    _logger = logging.getLogger(__name__)
+
+    class Status(Enum):
+        DISCONNECTED = 0
+        CONNECTING = 1
+        CONNECTED = 3
+
     _MSG_ID_AUTH = 'msg_auth'
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
     _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
@@ -17,6 +23,7 @@ class QuikConnector:
     _buf_size: int = 65536
     # msg_encoding = 'UTF-8'
     msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
+    _logger = logging.getLogger(__name__)
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
         self._logger.setLevel(logging.DEBUG)
@@ -26,7 +33,7 @@ class QuikConnector:
         self._sock: socket = None
         self._account = account
         self._last_trans_id = 0
-        self._connected = False
+        self.status = self.Status.DISCONNECTED
         self.sec_code = 'RIU8'
 
         # Callbacks handlers for messages. One callback for one message id.
@@ -39,6 +46,7 @@ class QuikConnector:
         """
         Connect and authorize
         """
+        self.status = QuikConnector.Status.CONNECTING
         self._logger.info("Connecting to " + self._host + ":" + str(self._port))
         self._sock = socket.socket()
         self._sock.connect((self._host, self._port))
@@ -59,7 +67,8 @@ class QuikConnector:
         auth_result = msg['result'][0]
         if not auth_result:
             raise ConnectionError("Quik LUA authentication failed")
-        self._connected = True
+        self.status = QuikConnector.Status.CONNECTED
+
         self._logger.info('Connected')
         # If authenticated, subscribe to data
         # self._create_datasource(self.sec_code)
@@ -196,4 +205,4 @@ if __name__ == "__main__":
         format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
         datefmt="%Y-%m-%d %H:%M:%S")
     # execute only if run as a script
-    #QuikConnector().run()
+    # QuikConnector().run()
