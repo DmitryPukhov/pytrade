@@ -10,28 +10,25 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
+    _logger = logging.getLogger(__name__)
     _MSG_ID_AUTH = 'msg_auth'
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
     _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
-
-    _delimiter: str = 'message:'
+    _MSG_DELIMITER: str = 'message:'
     _buf_size: int = 65536
-    _sock: socket = None
-    _logger: Logger = None
-    _connected = False
+    # msg_encoding = 'UTF-8'
+    msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
 
-    # Main security to get price/vol of
-    sec_code = None
-
-    def __init__(self, host="192.168.1.104", port=1111, passwd='1'):
+    def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
         """ Construct the class for host and port """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.setLevel(logging.DEBUG)
         self._host = host
         self._port = port
         self._passwd = passwd
         self._sock: socket = None
+        self._account = account
         self.sec_code = 'RIU8'
+        self._last_trans_id = 0
 
         # Callbacks handlers for messages. One callback for one message id.
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
@@ -60,10 +57,10 @@ class QuikConnector:
         self._connected = True
         self._logger.info('Connected')
         # If authenticated, subscribe to data
-        #self._create_datasource(self.sec_code)
+        # self._create_datasource(self.sec_code)
         # Send order 4 test
         # todo: remove this test code
-        self._send_order()
+        self._send_order(classcode='SPBFUT', seccode='RIU8', quantity=1)
 
     def _create_datasource(self, sec_code):
         """
@@ -89,34 +86,61 @@ class QuikConnector:
         :param msg: message from quik, already decoded to a dictionary
         :return: None
         """
-        # We need ensure first that this message contains our security with it's price/volume
+
+        switcher = {'OnAllTrade': self._on_all_trade,
+                    'OnTransReply': self._on_trans_reply}
+        func = switcher.get(msg['callback_name'])
+        if func is None:
+            return
+        func(msg)
+        # # We need ensure first that this message contains our security with it's price/volume
+        # if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
+        #     return
+        # # It is really our price/volume, get them
+        # price = msg['result']['price']
+        # vol = msg['result']['qty']
+        # self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
+
+    def _on_trans_reply(self, msg):
+        """Transaction reply callback"""
+        result = msg['result']
+        if type(result) is dict:
+            # This OnTransReply is what we needed. It contains the responce to our transaction.
+            self._logger.info(msg['result']['result_msg'])
+        else:
+            # Quik sends first OnTransReply when message is received ?
+            self._logger.info('Result: %s' % msg['result'])
+
+    def _on_all_trade(self, msg):
+        """Trade data callback"""
+
         if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
             return
-        # It is really our price/volume, get them
         price = msg['result']['price']
         vol = msg['result']['qty']
         self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
 
-    def _send_order(self):
+    def _send_order(self, classcode, seccode, quantity=1):
         """
         Buy/sell order
         :return:
         """
-        trans_id = 7
-
+        self._last_trans_id += 1
         ## !!! Works!!!
-        #trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=1'% trans_id
-        #trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
+        # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=1'% trans_id
+        # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
 
-        trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=M\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
-        order_msg = '%s{"id": "%s","method": "sendTransaction","args": ["%s"]}' % (self._delimiter,trans_id, trans)
+        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=%d' \
+                % (self._account, self._account, self._last_trans_id, classcode, seccode, quantity)
+        order_msg = '%s{"id": "%s","method": "sendTransaction","args": ["%s"]}' % (
+            self._MSG_DELIMITER, self._last_trans_id, trans)
         self._logger.info('Sending order %s' % order_msg)
         # Send order
         self._sock.sendall(bytes(order_msg, 'UTF-8'))
         # Send reply req
-        trans_reply_id = str(trans_id) + '_reply'
+        trans_reply_id = str(self._last_trans_id) + '_reply'
         trans_reply_msg = '%s{"id": "%s","method": "OnTransReply","args": ["%s"]}' \
-                          % (self._delimiter,trans_reply_id, trans_id)
+                          % (self._MSG_DELIMITER, trans_reply_id, self._last_trans_id)
         self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
 
     def run(self):
@@ -129,24 +153,27 @@ class QuikConnector:
         # Message processing loop
         try:
             while True:
-                data = self._sock.recv(self._buf_size).decode()
-                print(data)
-                # Received data can contain multiple messages
-                data_items = data.split(self._delimiter)
-                for data_item in data_items:
-                    if not data_item:
-                        continue  # Skip empty '' messages
-                    # Parse single message
-                    try:
-                        msg: dict = json.loads(data_item)
-                        # Call callback for this message
-                        callback = self._callbacks.get(msg['id'])
-                        if callback:
-                            callback(msg)
+                data = self._sock.recv(self._buf_size)
+                try:
+                    data = data.decode(self.msg_encoding)
+                    print(data)
+                    # Received data can contain multiple messages
+                    data_items = data.split(self._MSG_DELIMITER)
 
-                    except json.decoder.JSONDecodeError:
-                        self._logger.exception('Bad message packet %s, message %s' % (data, data_item))
-
+                    for data_item in data_items:
+                        if not data_item:
+                            continue  # Skip empty '' messages
+                        # Parse single message
+                        try:
+                            msg: dict = json.loads(data_item)
+                            # Call callback for this message
+                            callback = self._callbacks.get(msg['id'])
+                            if callback:
+                                callback(msg)
+                        except json.decoder.JSONDecodeError:
+                            self._logger.exception('Bad message packet %s, message %s' % (data, data_item))
+                except UnicodeDecodeError:
+                    self._logger.exception('Bad message packet %s' % data)
         except KeyboardInterrupt:
             self._logger.info("Interrupted by user")
 
