@@ -59,9 +59,11 @@ class QuikConnector:
             raise ConnectionError("Quik LUA authentication failed")
         self._connected = True
         self._logger.info('Connected')
-
         # If authenticated, subscribe to data
-        self._create_datasource(self.sec_code)
+        #self._create_datasource(self.sec_code)
+        # Send order 4 test
+        # todo: remove this test code
+        self._send_order()
 
     def _create_datasource(self, sec_code):
         """
@@ -95,6 +97,28 @@ class QuikConnector:
         vol = msg['result']['qty']
         self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
 
+    def _send_order(self):
+        """
+        Buy/sell order
+        :return:
+        """
+        trans_id = 7
+
+        ## !!! Works!!!
+        #trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=1'% trans_id
+        #trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
+
+        trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=M\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
+        order_msg = '%s{"id": "%s","method": "sendTransaction","args": ["%s"]}' % (self._delimiter,trans_id, trans)
+        self._logger.info('Sending order %s' % order_msg)
+        # Send order
+        self._sock.sendall(bytes(order_msg, 'UTF-8'))
+        # Send reply req
+        trans_reply_id = str(trans_id) + '_reply'
+        trans_reply_msg = '%s{"id": "%s","method": "OnTransReply","args": ["%s"]}' \
+                          % (self._delimiter,trans_reply_id, trans_id)
+        self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
+
     def run(self):
         """ Connect and run message processing loop """
 
@@ -106,6 +130,7 @@ class QuikConnector:
         try:
             while True:
                 data = self._sock.recv(self._buf_size).decode()
+                print(data)
                 # Received data can contain multiple messages
                 data_items = data.split(self._delimiter)
                 for data_item in data_items:
