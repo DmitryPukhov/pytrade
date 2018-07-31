@@ -1,7 +1,6 @@
 import json
 import logging
 import socket
-from logging import Logger
 
 
 class QuikConnector:
@@ -27,6 +26,7 @@ class QuikConnector:
         self._sock: socket = None
         self._account = account
         self._last_trans_id = 0
+        self._connected = False
         self.sec_code = 'RIU8'
 
         # Callbacks handlers for messages. One callback for one message id.
