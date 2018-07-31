@@ -20,15 +20,14 @@ class QuikConnector:
     msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
-        """ Construct the class for host and port """
         self._logger.setLevel(logging.DEBUG)
         self._host = host
         self._port = port
         self._passwd = passwd
         self._sock: socket = None
         self._account = account
-        self.sec_code = 'RIU8'
         self._last_trans_id = 0
+        self.sec_code = 'RIU8'
 
         # Callbacks handlers for messages. One callback for one message id.
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
@@ -37,20 +36,26 @@ class QuikConnector:
                            'callback': self._callback}
 
     def _connect(self):
-        """ Connect and authorize """
+        """
+        Connect and authorize
+        """
         self._logger.info("Connecting to " + self._host + ":" + str(self._port))
         self._sock = socket.socket()
         self._sock.connect((self._host, self._port))
         self._logger.info("Connected to " + self._host + ":" + str(self._port))
 
     def _auth(self):
-        """ Authorize at Quik Lua """
+        """
+        Authorize at Quik Lua
+        """
         msg = '{ "id": "%s" , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
         self._logger.debug('Sending message: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_auth(self, msg):
-        """Authenticated event callback"""
+        """
+        Authenticated event callback
+        """
         auth_result = msg['result'][0]
         if not auth_result:
             raise ConnectionError("Quik LUA authentication failed")
@@ -82,27 +87,22 @@ class QuikConnector:
 
     def _callback(self, msg):
         """
-        The most important method in all the connector: processes received price/vol data
-        :param msg: message from quik, already decoded to a dictionary
+        Process callback message, actually call price_vol or transaction callback.
+        :param msg: message, decoded from json as dict
         :return: None
         """
-
+        # Redirect to more specific callback
         switcher = {'OnAllTrade': self._on_all_trade,
                     'OnTransReply': self._on_trans_reply}
         func = switcher.get(msg['callback_name'])
         if func is None:
             return
         func(msg)
-        # # We need ensure first that this message contains our security with it's price/volume
-        # if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
-        #     return
-        # # It is really our price/volume, get them
-        # price = msg['result']['price']
-        # vol = msg['result']['qty']
-        # self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
 
     def _on_trans_reply(self, msg):
-        """Transaction reply callback"""
+        """
+        Transaction callback
+        """
         result = msg['result']
         if type(result) is dict:
             # This OnTransReply is what we needed. It contains the responce to our transaction.
@@ -112,7 +112,12 @@ class QuikConnector:
             self._logger.info('Result: %s' % msg['result'])
 
     def _on_all_trade(self, msg):
-        """Trade data callback"""
+        """
+        price/vol callback
+        The most important method in all the connector: processes received price/vol data
+        :param msg: message from quik, already decoded to a dictionary
+        :return: None
+        """
 
         if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
             return
@@ -144,7 +149,9 @@ class QuikConnector:
         self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
 
     def run(self):
-        """ Connect and run message processing loop """
+        """
+         Connect and run message processing loop
+          """
 
         # Connecting
         self._connect()
