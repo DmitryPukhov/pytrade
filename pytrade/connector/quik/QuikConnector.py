@@ -34,17 +34,42 @@ class QuikConnector:
         self._account = account
         self._last_trans_id = 0
         self.status = self.Status.DISCONNECTED
-        self.sec_code = 'RIU8'
 
         # Callbacks handlers for messages. One callback for one message id.
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource,
                            # self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
                            'callback': self._callback}
+        # Subscribers for data feed
+        self._feed_callbacks = {}
+        # Broker information subscribers
+        self._broker_callbacks = {}
 
-    def _connect(self):
+    # def connect(self):
+    #     """
+    #     Connect and authorize, synchronous operation
+    #     :return:
+    #     """
+    #     if self.status != QuikConnector.Status.DISCONNECTED:
+    #         self._logger.info('Already connected or connecting.')
+    #     self._connect_sock()
+    #     self._auth()
+    #     # Wait for responce from Quik
+    #     attempt_sec = 3
+    #     attempts = 3
+    #     for attempt in range(1, attempts):
+    #         if self.status == QuikConnector.Status.CONNECTED:
+    #             break
+    #
+    # #            time.sleep(attempt_sec)
+    # #         if self.status != QuikConnector.Status.CONNECTED:
+    # #             raise ConnectionError('Cannot connect to quik')
+    # #         else:
+    # #             self._logger.info('Successfully connected to quik')
+
+    def _connect_sock(self):
         """
-        Connect and authorize
+        Connect and authorize. Synchronous operation.
         """
         self.status = QuikConnector.Status.CONNECTING
         self._logger.info("Connecting to " + self._host + ":" + str(self._port))
@@ -54,7 +79,7 @@ class QuikConnector:
 
     def _auth(self):
         """
-        Authorize at Quik Lua
+        Authorize at Quik Lua. Asynchronous operation
         """
         msg = '{ "id": "%s" , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
         self._logger.debug('Sending message: %s' % msg)
@@ -74,15 +99,35 @@ class QuikConnector:
         # self._create_datasource(self.sec_code)
         # Send order 4 test
         # todo: remove this test code
-        self._send_order(classcode='SPBFUT', seccode='RIU8', quantity=1)
+        #self._send_order(class_code='SPBFUT', sec_code='RIU8', quantity=1)
 
-    def _create_datasource(self, sec_code):
+    def subscribe(self, sec_name, sec_code, feed_callback):
+        """
+        Subscribe to data for given security
+        :param sec_code security code, example 'SPBFUT'
+        :param sec_name name of security, example 'RIU8'
+        :param feed_callback callback function to pass price/volume into
+        """
+        self._feed_callbacks[(sec_name, sec_code)] = feed_callback
+        if self.status == QuikConnector.Status.CONNECTED:
+            self._create_datasource(sec_name, sec_code)
+
+    def _create_subscribers_datasources(self):
+        """
+        Call _create_datasource for every security from feed_callbacks
+        feed_callback already contains map (sec_code, sec_name): feed callback function
+        :return: None
+        """
+        for (sec_code, sec_name),value in self._feed_callbacks.items():
+            self._create_datasource(sec_code, sec_name)
+
+    def _create_datasource(self, sec_name, sec_code):
         """
         After CreateDataSource method call we'll receive OnAllTrade messages
         """
-        msg_id = '%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, sec_code)
-        msg = '{"id": "%s","method": "CreateDataSource","args": ["SPBFUT", "%s", "INTERVAL_TICK"]}' \
-              % (msg_id, sec_code)
+        msg_id = '%s_%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, sec_name, sec_code)
+        msg = '%s{"id": "%s","method": "CreateDataSource","args": ["%s", "%s", "INTERVAL_TICK"]}' \
+              % (self._MSG_DELIMITER, msg_id, sec_name, sec_code)
         self._logger.info('Sending msg: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
@@ -90,7 +135,7 @@ class QuikConnector:
         """
         Log created data source id or error message
         """
-        # Result contain data sourc id or error text. Print it to log
+        # Result contain data source id or error text. Print it to log
         datasource_id = msg['result'][0]
         self._logger.info('Created datasource id: %s' % datasource_id)
 
@@ -122,19 +167,23 @@ class QuikConnector:
 
     def _on_all_trade(self, msg):
         """
-        price/vol callback
+        price/vol callback - new tick came to us
         The most important method in all the connector: processes received price/vol data
         :param msg: message from quik, already decoded to a dictionary
         :return: None
         """
 
-        if msg['callback_name'] != 'OnAllTrade' or msg['result']['sec_code'] != self.sec_code:
+        if msg['callback_name'] != 'OnAllTrade':
             return
-        price = msg['result']['price']
-        vol = msg['result']['qty']
-        self._logger.info('%s price: %s, volume: %s' % (self.sec_code, price, vol))
+        result = msg['result']
+        class_code = result['class_code']
+        sec_name = result['sec_code']
+        callback = self._feed_callbacks.get((class_code, sec_name))
+        if callback is not None:
+            self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_name))
+            callback(class_code, sec_name, result['price'], result['qty'])
 
-    def _send_order(self, classcode, seccode, quantity=1):
+    def _send_order(self, class_code, sec_code, quantity=1):
         """
         Buy/sell order
         :return:
@@ -145,7 +194,7 @@ class QuikConnector:
         # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
 
         trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=%d' \
-                % (self._account, self._account, self._last_trans_id, classcode, seccode, quantity)
+                % (self._account, self._account, self._last_trans_id, class_code, sec_code, quantity)
         order_msg = '%s{"id": "%s","method": "sendTransaction","args": ["%s"]}' % (
             self._MSG_DELIMITER, self._last_trans_id, trans)
         self._logger.info('Sending order %s' % order_msg)
@@ -159,12 +208,16 @@ class QuikConnector:
 
     def run(self):
         """
-         Connect and run message processing loop
-          """
+         Run message processing loop
+         Should be already connected
+        """
 
         # Connecting
-        self._connect()
+        self._connect_sock()
         self._auth()
+
+        # Call quik to create datasource for each instrument, requested by subscribers.
+        self._create_subscribers_datasources()
 
         # Message processing loop
         try:

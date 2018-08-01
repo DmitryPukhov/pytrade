@@ -9,9 +9,18 @@ class QuikFeed:
     """
 
     _logger = logging.getLogger(__name__)
+    callbacks = set()
 
-    def __init__(self, quik):
-        self.quik = quik
+    def __init__(self, quik, class_code, sec_code):
+        """
+        Constructor
+        :param quik: QuikConnector instance
+        :param sec_code: security code, example 'SPBFUT'
+        :param sec_name:  security name, example 'RIU8'
+        """
+        self._quik = quik
+        self.class_code = class_code
+        self.sec_code = sec_code
 
     def start(self):
         """
@@ -19,6 +28,23 @@ class QuikFeed:
         :return:
         """
 
+        # Subscribe to data stream
+        self._quik.subscribe(self.class_code, self.sec_code, self.on_tick)
+
+        # Start quik connector loop
         self._logger.info("Starting quik data feed")
-        if self.quik.status == QuikConnector.Status.DISCONNECTED:
-            self.quik.run()
+        if self._quik.status == QuikConnector.Status.DISCONNECTED:
+            self._quik.run()
+
+    def on_tick(self, sec_code, sec_name, price, vol):
+        """
+        Tick callback
+        :param sec_code security code, example 'SPBFUT'
+        :param sec_name name of security, example 'RIU8'
+        :param price: received price
+        :param vol: received volume
+        :return: None
+        """
+        print('Security code %s, name %s, price: %d, vol: %d', sec_code, sec_name, price, vol)
+        for callback in self.callbacks:
+            callback(sec_code, sec_name, price, vol)
