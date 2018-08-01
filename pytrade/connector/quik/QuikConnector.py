@@ -247,7 +247,7 @@ class QuikConnector:
             self._logger.info("Interrupted by user")
 
         # Exiting
-        self._connected = False
+        self.status = QuikConnector.Status.DISCONNECTED
         self._sock.close()
         self._logger.info('Disconnected')
 
