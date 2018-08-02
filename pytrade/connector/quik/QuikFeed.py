@@ -45,6 +45,5 @@ class QuikFeed:
         :param vol: received volume
         :return: None
         """
-        print('Security code %s, name %s, price: %d, vol: %d', sec_code, sec_name, price, vol)
         for callback in self.callbacks:
             callback(sec_code, sec_name, price, vol)

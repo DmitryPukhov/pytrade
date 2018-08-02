@@ -11,6 +11,7 @@ class App:
     """
 
     _logger = logging.getLogger(__name__)
+    _logger.setLevel(logging.DEBUG)
 
     def __init__(self):
         self._logger.info("Initializing the App")
@@ -28,10 +29,15 @@ class App:
         self._feed.start()
         self._broker.start()
 
+    _testflag = False
+
     def on_tick(self, class_code, sec_code, price, vol):
         """Tick callback"""
-        self._logger.debug('We received a great tick! sec_code: %s, price: %s, vol:@s', sec_code, price, vol)
+        self._logger.info('We received a great tick! sec_code: %s, price: %s, vol:%s' % (sec_code, price, vol))
 
+        if not self._testflag:
+            self._broker.kill_all_orders()
+        self._testflag = True
 
 
 if __name__ == "__main__":

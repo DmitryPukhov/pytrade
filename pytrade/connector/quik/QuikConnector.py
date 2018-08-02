@@ -45,28 +45,6 @@ class QuikConnector:
         # Broker information subscribers
         self._broker_callbacks = {}
 
-    # def connect(self):
-    #     """
-    #     Connect and authorize, synchronous operation
-    #     :return:
-    #     """
-    #     if self.status != QuikConnector.Status.DISCONNECTED:
-    #         self._logger.info('Already connected or connecting.')
-    #     self._connect_sock()
-    #     self._auth()
-    #     # Wait for responce from Quik
-    #     attempt_sec = 3
-    #     attempts = 3
-    #     for attempt in range(1, attempts):
-    #         if self.status == QuikConnector.Status.CONNECTED:
-    #             break
-    #
-    # #            time.sleep(attempt_sec)
-    # #         if self.status != QuikConnector.Status.CONNECTED:
-    # #             raise ConnectionError('Cannot connect to quik')
-    # #         else:
-    # #             self._logger.info('Successfully connected to quik')
-
     def _connect_sock(self):
         """
         Connect and authorize. Synchronous operation.
@@ -82,7 +60,8 @@ class QuikConnector:
         Authorize at Quik Lua. Asynchronous operation
         """
         msg = '{ "id": "%s" , "method": "checkSecurity", "args": ["%s"] }' % (self._MSG_ID_AUTH, self._passwd)
-        self._logger.debug('Sending message: %s' % msg)
+        self._logger.info("Authorizing.")
+        self._logger.debug('Sending authorizing message: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
     def _on_auth(self, msg):
@@ -93,41 +72,40 @@ class QuikConnector:
         if not auth_result:
             raise ConnectionError("Quik LUA authentication failed")
         self.status = QuikConnector.Status.CONNECTED
-
-        self._logger.info('Connected')
+        self._logger.info('Authorized')
         # If authenticated, subscribe to data
         # self._create_datasource(self.sec_code)
         # Send order 4 test
         # todo: remove this test code
-        #self._send_order(class_code='SPBFUT', sec_code='RIU8', quantity=1)
+        # self._send_order(class_code='SPBFUT', sec_code='RIU8', quantity=1)
 
-    def subscribe(self, sec_name, sec_code, feed_callback):
+    def subscribe(self, class_code, sec_code, feed_callback):
         """
         Subscribe to data for given security
-        :param sec_code security code, example 'SPBFUT'
-        :param sec_name name of security, example 'RIU8'
+        :param class_code security class, example 'SPBFUT'
+        :param sec_code code of security, example 'RIU8'
         :param feed_callback callback function to pass price/volume into
         """
-        self._feed_callbacks[(sec_name, sec_code)] = feed_callback
+        self._feed_callbacks[(class_code, sec_code)] = feed_callback
         if self.status == QuikConnector.Status.CONNECTED:
-            self._create_datasource(sec_name, sec_code)
+            self._create_datasource(class_code, sec_code)
 
     def _create_subscribers_datasources(self):
         """
         Call _create_datasource for every security from feed_callbacks
-        feed_callback already contains map (sec_code, sec_name): feed callback function
+        feed_callback already contains map (class_code, sec_code): feed callback function
         :return: None
         """
-        for (sec_code, sec_name),value in self._feed_callbacks.items():
-            self._create_datasource(sec_code, sec_name)
+        for (class_code, sec_code), value in self._feed_callbacks.items():
+            self._create_datasource(class_code, sec_code)
 
-    def _create_datasource(self, sec_name, sec_code):
+    def _create_datasource(self, class_code, sec_code):
         """
         After CreateDataSource method call we'll receive OnAllTrade messages
         """
-        msg_id = '%s_%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, sec_name, sec_code)
+        msg_id = '%s_%s_%s' % (self._MSG_ID_CREATE_DATASOURCE, class_code, sec_code)
         msg = '%s{"id": "%s","method": "CreateDataSource","args": ["%s", "%s", "INTERVAL_TICK"]}' \
-              % (self._MSG_DELIMITER, msg_id, sec_name, sec_code)
+              % (self._MSG_DELIMITER, msg_id, class_code, sec_code)
         self._logger.info('Sending msg: %s' % msg)
         self._sock.sendall(bytes(msg, 'UTF-8'))
 
@@ -165,6 +143,17 @@ class QuikConnector:
             # Quik sends first OnTransReply when message is received ?
             self._logger.info('Result: %s' % msg['result'])
 
+    def _on_order_reply(self, msg):
+        """
+        Order reply callback. We have 2 callbacks to order:
+        - with msg_id=OnTransReply result=[return code]
+        - with msg_id=<sent order id>  result=[ return message ] (this)
+        This callback is more informative in case of error, we catch it and write to log
+        :param msg:
+        :return:
+        """
+        self._logger.info('Order callback. order id: %s, result: %s' % (msg['id'], msg['result']))
+
     def _on_all_trade(self, msg):
         """
         price/vol callback - new tick came to us
@@ -177,15 +166,21 @@ class QuikConnector:
             return
         result = msg['result']
         class_code = result['class_code']
-        sec_name = result['sec_code']
-        callback = self._feed_callbacks.get((class_code, sec_name))
+        sec_code = result['sec_code']
+        callback = self._feed_callbacks.get((class_code, sec_code))
         if callback is not None:
-            self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_name))
-            callback(class_code, sec_name, result['price'], result['qty'])
+            self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_code))
+            callback(class_code, sec_code, result['price'], result['qty'])
 
-    def _send_order(self, class_code, sec_code, quantity=1):
+    def send_order(self, class_code, sec_code, operation, price, quantity=1):
         """
         Buy/sell order
+        :param type 'L' for limit
+        :param class_code security class, example 'SPBFUT'
+        :param sec_code code of security, example 'RIU8'
+        :param operation B for buy, S for sell
+        :param price for limit order. For market order set price to 0
+        :param quantity number of items to buy/sell
         :return:
         """
         self._last_trans_id += 1
@@ -193,18 +188,42 @@ class QuikConnector:
         # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=1'% trans_id
         # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
 
-        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=%d' \
-                % (self._account, self._account, self._last_trans_id, class_code, sec_code, quantity)
-        order_msg = '%s{"id": "%s","method": "sendTransaction","args": ["%s"]}' % (
+        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+                % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
+        self._send_order_msg(trans)
+
+    def _send_order_msg(self, trans):
+        """
+        Send transaction message, subscribe to responce on result of this transaction
+        :param trans prepared transaction string for quik
+        :return None
+        """
+
+        order_msg = '%s{"id": "order_%s","method": "sendTransaction","args": ["%s"]}' % (
             self._MSG_DELIMITER, self._last_trans_id, trans)
         self._logger.info('Sending order %s' % order_msg)
         # Send order
         self._sock.sendall(bytes(order_msg, 'UTF-8'))
+
         # Send reply req
         trans_reply_id = str(self._last_trans_id) + '_reply'
         trans_reply_msg = '%s{"id": "%s","method": "OnTransReply","args": ["%s"]}' \
                           % (self._MSG_DELIMITER, trans_reply_id, self._last_trans_id)
         self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
+
+    def kill_all_orders(self):
+        """
+        Kill all orders in trade system. Two calls needed - for stock and for futures markets.
+        """
+        self._logger.info("Killing all orders in trade system")
+        self._last_trans_id += 1
+        # trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_ORDERS\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_ORDERS' \
+                % (self._account, self._account, self._last_trans_id)
+        self._send_order_msg(trans)
+        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_FUTURES_ORDERS' \
+                % (self._account, self._account, self._last_trans_id)
+        self._send_order_msg(trans)
 
     def run(self):
         """
@@ -225,7 +244,7 @@ class QuikConnector:
                 data = self._sock.recv(self._buf_size)
                 try:
                     data = data.decode(self.msg_encoding)
-                    print(data)
+                    self._logger.debug(data)
                     # Received data can contain multiple messages
                     data_items = data.split(self._MSG_DELIMITER)
 
@@ -235,10 +254,17 @@ class QuikConnector:
                         # Parse single message
                         try:
                             msg: dict = json.loads(data_item)
+                            msg_id = msg['id']
+
                             # Call callback for this message
-                            callback = self._callbacks.get(msg['id'])
+                            callback = self._callbacks.get(msg_id)
                             if callback:
                                 callback(msg)
+                            else:
+                                # Order reply id should start from 'order'
+                                if str(msg_id).startswith('order'):
+                                    self._on_order_reply(msg)
+
                         except json.decoder.JSONDecodeError:
                             self._logger.exception('Bad message packet %s, message %s' % (data, data_item))
                 except UnicodeDecodeError:
