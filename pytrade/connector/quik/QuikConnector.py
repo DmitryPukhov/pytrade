@@ -26,7 +26,7 @@ class QuikConnector:
     _logger = logging.getLogger(__name__)
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
-        self._logger.setLevel(logging.DEBUG)
+        self._logger.setLevel(logging.INFO)
         self._host = host
         self._port = port
         self._passwd = passwd
