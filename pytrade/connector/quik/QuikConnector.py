@@ -2,6 +2,7 @@ import json
 import logging
 import socket
 from enum import Enum
+import time
 
 
 class QuikConnector:
@@ -20,10 +21,13 @@ class QuikConnector:
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
     _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
     _MSG_DELIMITER: str = 'message:'
+    _HEARTBEAT_SECONDS = 3
+
     _buf_size: int = 65536
+    _logger = logging.getLogger(__name__)
+
     # msg_encoding = 'UTF-8'
     msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
-    _logger = logging.getLogger(__name__)
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
         self._logger.setLevel(logging.INFO)
@@ -47,6 +51,7 @@ class QuikConnector:
 
         # Callback functions for each tick, when any new message received
         self.heartbeat_callbacks = set()
+        self._last_heartbeat = 0
 
     def _connect_sock(self):
         """
@@ -227,8 +232,8 @@ class QuikConnector:
         # self._send_order_msg(trans)
         trans = 'ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS' \
                 % (self._account, self._last_trans_id, class_code, sec_code)
-        trans='ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS\\nOPERATION=B' \
-              % (self._account, self._last_trans_id, class_code, sec_code)
+        trans = 'ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS\\nOPERATION=B' \
+                % (self._account, self._last_trans_id, class_code, sec_code)
         self._send_order_msg(trans)
 
     def run(self):
@@ -277,7 +282,9 @@ class QuikConnector:
                     self._logger.exception('Bad message packet %s' % data)
 
                 # Do heartbeat when connected to quik
-                if self.status == QuikConnector.Status.CONNECTED:
+                if self.status == QuikConnector.Status.CONNECTED \
+                        and time.time() - self._last_heartbeat > self._HEARTBEAT_SECONDS:
+                    self._last_heartbeat = time.time()
                     for callback in self.heartbeat_callbacks:
                         callback()
 
