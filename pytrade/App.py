@@ -22,6 +22,7 @@ class App:
         self._feed = QuikFeed(quik, 'SPBFUT', 'RIU8')
         self._feed.tick_callbacks.add(self.on_tick)
         self._feed.heartbeat_callbacks.add(self.on_heartbeat)
+        self._heart_beating = False
 
     def main(self):
         """
@@ -35,20 +36,16 @@ class App:
         """Tick callback"""
         self._logger.info('We received a great tick! sec_code: %s, price: %s, vol:%s' % (sec_code, price, vol))
 
-
-    _testflag = False
-
     def on_heartbeat(self):
         """
         Any service, checks when system is heartbeating
         :return: None
         """
-
-        if not self._testflag:
+        if not self._heart_beating:
+            # Action during first heartbeat
             self._broker.kill_all_orders()
 
-        self._testflag = True
-
+        self._heart_beating=True
 
 
 if __name__ == "__main__":
