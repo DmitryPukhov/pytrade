@@ -45,6 +45,9 @@ class QuikConnector:
         # Broker information subscribers
         self._broker_callbacks = {}
 
+        # Callback functions for each tick, when any new message received
+        self.heartbeat_callbacks = set()
+
     def _connect_sock(self):
         """
         Connect and authorize. Synchronous operation.
@@ -211,18 +214,21 @@ class QuikConnector:
                           % (self._MSG_DELIMITER, trans_reply_id, self._last_trans_id)
         self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
 
-    def kill_all_orders(self):
+    def kill_all_orders(self, class_code, sec_code):
         """
         Kill all orders in trade system. Two calls needed - for stock and for futures markets.
         """
         self._logger.info("Killing all orders in trade system")
         self._last_trans_id += 1
-        # trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_ORDERS\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
-        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_ORDERS' \
-                % (self._account, self._account, self._last_trans_id)
-        self._send_order_msg(trans)
-        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_FUTURES_ORDERS' \
-                % (self._account, self._account, self._last_trans_id)
+        # trans = 'ACCOUNT=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_ORDERS\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+
+        # trans = 'ACCOUNT=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_ORDERS' \
+        #         % (self._account, self._account, self._last_trans_id)
+        # self._send_order_msg(trans)
+        trans = 'ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS' \
+                % (self._account, self._last_trans_id, class_code, sec_code)
+        trans='ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS\\nOPERATION=B' \
+              % (self._account, self._last_trans_id, class_code, sec_code)
         self._send_order_msg(trans)
 
     def run(self):
@@ -269,6 +275,12 @@ class QuikConnector:
                             self._logger.exception('Bad message packet %s, message %s' % (data, data_item))
                 except UnicodeDecodeError:
                     self._logger.exception('Bad message packet %s' % data)
+
+                # Do heartbeat when connected to quik
+                if self.status == QuikConnector.Status.CONNECTED:
+                    for callback in self.heartbeat_callbacks:
+                        callback()
+
         except KeyboardInterrupt:
             self._logger.info("Interrupted by user")
 

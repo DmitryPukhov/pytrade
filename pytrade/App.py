@@ -17,27 +17,38 @@ class App:
         self._logger.info("Initializing the App")
         quik = QuikConnector(host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998')
         self._broker = QuikBroker(quik)
+
+        # Create feed, subscribe events
         self._feed = QuikFeed(quik, 'SPBFUT', 'RIU8')
-        self._feed.callbacks.add(self.on_tick)
+        self._feed.tick_callbacks.add(self.on_tick)
+        self._feed.heartbeat_callbacks.add(self.on_heartbeat)
 
     def main(self):
         """
         Application entry point
         :return: None
         """
-
         self._feed.start()
         self._broker.start()
-
-    _testflag = False
 
     def on_tick(self, class_code, sec_code, price, vol):
         """Tick callback"""
         self._logger.info('We received a great tick! sec_code: %s, price: %s, vol:%s' % (sec_code, price, vol))
 
+
+    _testflag = False
+
+    def on_heartbeat(self):
+        """
+        Any service, checks when system is heartbeating
+        :return: None
+        """
+
         if not self._testflag:
             self._broker.kill_all_orders()
+
         self._testflag = True
+
 
 
 if __name__ == "__main__":

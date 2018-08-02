@@ -1,4 +1,4 @@
-from pytrade.connector.quik.QuikConnector import  QuikConnector
+from pytrade.connector.quik.QuikConnector import QuikConnector
 import logging
 
 
@@ -9,9 +9,10 @@ class QuikFeed:
     """
 
     _logger = logging.getLogger(__name__)
-    callbacks = set()
+    tick_callbacks = set()
+    heartbeat_callbacks = set()
 
-    def __init__(self, quik, class_code, sec_code):
+    def __init__(self, quik:QuikConnector, class_code, sec_code):
         """
         Constructor
         :param quik: QuikConnector instance
@@ -19,6 +20,7 @@ class QuikFeed:
         :param sec_name:  security name, example 'RIU8'
         """
         self._quik = quik
+        self._quik.heartbeat_callbacks.add(self.on_heartbeat)
         self.class_code = class_code
         self.sec_code = sec_code
 
@@ -45,5 +47,12 @@ class QuikFeed:
         :param vol: received volume
         :return: None
         """
-        for callback in self.callbacks:
+        for callback in self.tick_callbacks:
             callback(sec_code, sec_name, price, vol)
+
+    def on_heartbeat(self):
+        """
+        Listen heartbeat from connector and call subscribers
+        """
+        for callback in self.heartbeat_callbacks:
+            callback()

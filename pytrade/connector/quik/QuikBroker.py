@@ -44,6 +44,6 @@ class QuikBroker:
         Kill all orders in trade system
         :return:
         """
-        self._quik.kill_all_orders()
+        self._quik.kill_all_orders('SPBFUT', 'RIU8')
 
 
