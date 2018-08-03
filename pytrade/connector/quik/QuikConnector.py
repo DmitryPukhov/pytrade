@@ -81,6 +81,7 @@ class QuikConnector:
             raise ConnectionError("Quik LUA authentication failed")
         self.status = QuikConnector.Status.CONNECTED
         self._logger.info('Authorized')
+        self._create_subscribers_datasources()
         # If authenticated, subscribe to data
         # self._create_datasource(self.sec_code)
         # Send order 4 test
@@ -245,9 +246,6 @@ class QuikConnector:
         # Connecting
         self._connect_sock()
         self._auth()
-
-        # Call quik to create datasource for each instrument, requested by subscribers.
-        self._create_subscribers_datasources()
 
         # Message processing loop
         try:

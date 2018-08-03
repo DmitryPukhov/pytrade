@@ -23,16 +23,14 @@ class QuikFeed:
         self._quik.heartbeat_callbacks.add(self.on_heartbeat)
         self.class_code = class_code
         self.sec_code = sec_code
+        # Subscribe to data stream
+        self._quik.subscribe(self.class_code, self.sec_code, self.on_tick)
 
     def start(self):
         """
         Starting QuikConnector loop if not done yet
         :return:
         """
-
-        # Subscribe to data stream
-        self._quik.subscribe(self.class_code, self.sec_code, self.on_tick)
-
         # Start quik connector loop
         self._logger.info("Starting quik data feed")
         if self._quik.status == QuikConnector.Status.DISCONNECTED:
