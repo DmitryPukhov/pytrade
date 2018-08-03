@@ -34,6 +34,7 @@ class App:
         self._feed.start()
         self._broker.start()
 
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
