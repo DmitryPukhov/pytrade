@@ -10,7 +10,6 @@ class App:
     """
     Main application. Build strategy and run.
     """
-
     _logger = logging.getLogger(__name__)
     _logger.setLevel(logging.DEBUG)
 
