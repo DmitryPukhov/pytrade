@@ -21,9 +21,6 @@ class App:
         self._broker = QuikBroker(quik)
         self._feed = QuikFeed(quik, 'SPBFUT', 'RIU8')
         self._strategy = Strategy(self._feed, self._broker)
-        # self._feed.tick_callbacks.add(self.on_tick)
-        # self._feed.heartbeat_callbacks.add(self.on_heartbeat)
-        # self._heart_beating = False
 
     def main(self):
         """

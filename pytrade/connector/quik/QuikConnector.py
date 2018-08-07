@@ -21,6 +21,7 @@ class QuikConnector:
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
     _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
     _MSG_DELIMITER: str = 'message:'
+    _MSG_ID_GET_POS = 'msg_get_pos'
     _HEARTBEAT_SECONDS = 3
 
     _buf_size: int = 65536
@@ -30,7 +31,7 @@ class QuikConnector:
     msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
-        self._logger.setLevel(logging.INFO)
+        self._logger.setLevel(logging.DEBUG)
         self._host = host
         self._port = port
         self._passwd = passwd
@@ -44,10 +45,11 @@ class QuikConnector:
                            self._MSG_ID_CREATE_DATASOURCE: self._on_create_datasource,
                            # self._MSG_ID_SET_UPDATE_CALLBACK: self._on_set_update_callback,
                            'callback': self._callback}
+
         # Subscribers for data feed
         self._feed_callbacks = {}
         # Broker information subscribers
-        self._broker_callbacks = {}
+        self.broker_callbacks = []
 
         # Callback functions for each tick, when any new message received
         self.heartbeat_callbacks = set()
@@ -181,7 +183,7 @@ class QuikConnector:
             self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_code))
             callback(class_code, sec_code, result['price'], result['qty'])
 
-    def send_order(self, class_code, sec_code, operation, price, quantity=1):
+    def send_order(self, class_code, sec_code, operation, price, quantity, stop_price):
         """
         Buy/sell order
         :param type 'L' for limit
@@ -189,16 +191,27 @@ class QuikConnector:
         :param sec_code code of security, example 'RIU8'
         :param operation B for buy, S for sell
         :param price for limit order. For market order set price to 0
+        :param stop_price stop loss
+        :param tra_stop_price trailing stop
         :param quantity number of items to buy/sell
         :return:
         """
         self._last_trans_id += 1
-        ## !!! Works!!!
-        # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=B\\nPRICE=0\\nQUANTITY=1'% trans_id
-        # trans = 'ACCOUNT=SPBFUT00998\\nCLIENT_CODE=SPBFUT00998\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=SPBFUT\\nSECCODE=RIU8\\nACTION=NEW_ORDER\\nOPERATION=S\\nPRICE=0\\nQUANTITY=1'% trans_id
 
-        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
-                % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
+        # Main order
+        # trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+        #         % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
+
+        if stop_price is not None:
+            suffix = '\\nACTION=NEW_STOP_ORDER\\nSTOPPRICE=%s' % (price, stop_price)
+        else:
+            suffix = 'ACTION=NEW_ORDER'
+
+        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d\\n%s' \
+                % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price,
+                   quantity, suffix)
+        self._logger.info('Sending order: %s' % trans)
+        # Send
         self._send_order_msg(trans)
 
     def _send_order_msg(self, trans):
@@ -219,23 +232,6 @@ class QuikConnector:
         trans_reply_msg = '%s{"id": "%s","method": "OnTransReply","args": ["%s"]}' \
                           % (self._MSG_DELIMITER, trans_reply_id, self._last_trans_id)
         self._sock.sendall(bytes(trans_reply_msg, 'UTF-8'))
-
-    def kill_all_orders(self, class_code, sec_code):
-        """
-        Kill all orders in trade system. Two calls needed - for stock and for futures markets.
-        """
-        self._logger.info("Killing all orders in trade system")
-        self._last_trans_id += 1
-        # trans = 'ACCOUNT=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_ORDERS\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
-
-        # trans = 'ACCOUNT=%s\\nTRANS_ID=%d\\nACTION=KILL_ALL_ORDERS' \
-        #         % (self._account, self._account, self._last_trans_id)
-        # self._send_order_msg(trans)
-        trans = 'ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS' \
-                % (self._account, self._last_trans_id, class_code, sec_code)
-        trans = 'ACCOUNT=%s\\nTRANS_ID=%s\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=KILL_ALL_FUTURES_ORDERS\\nOPERATION=B' \
-                % (self._account, self._last_trans_id, class_code, sec_code)
-        self._send_order_msg(trans)
 
     def run(self):
         """
