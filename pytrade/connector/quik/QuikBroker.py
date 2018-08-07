@@ -39,7 +39,7 @@ class QuikBroker:
         """
         self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='B', price=price, quantity=quantity)
 
-    def sell(self, class_code, sec_code, price, quantity):
+    def sell(self, class_code, sec_code, price, quantity, stop_price=0):
         """
         Send sell order to broker
         :param class_code security class, example 'SPBFUT'

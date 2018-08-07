@@ -16,6 +16,7 @@ class QuikConnector:
         DISCONNECTED = 0
         CONNECTING = 1
         CONNECTED = 3
+        BUSY = 4
 
     _MSG_ID_AUTH = 'msg_auth'
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
@@ -183,7 +184,7 @@ class QuikConnector:
             self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_code))
             callback(class_code, sec_code, result['price'], result['qty'])
 
-    def send_order(self, class_code, sec_code, operation, price, quantity, stop_price):
+    def send_order(self, class_code, sec_code, operation, price, quantity):
         """
         Buy/sell order
         :param type 'L' for limit
@@ -197,19 +198,12 @@ class QuikConnector:
         :return:
         """
         self._last_trans_id += 1
-
-        # Main order
-        # trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nACTION=NEW_ORDER\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
-        #         % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
-
-        if stop_price is not None:
-            suffix = '\\nACTION=NEW_STOP_ORDER\\nSTOPPRICE=%s' % (price, stop_price)
-        else:
-            suffix = 'ACTION=NEW_ORDER'
-
-        trans = 'ACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d\\n%s' \
-                % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price,
-                   quantity, suffix)
+        # if stop_price is not None and stop_price != 0:
+        #     suffix = 'ACTION=NEW_STOP_ORDER\\nSTOPPRICE=%s' % (stop_price)
+        # else:
+        #     suffix = 'ACTION=NEW_ORDER'
+        trans = 'ACTION=NEW_ORDER\\nACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+                % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
         self._logger.info('Sending order: %s' % trans)
         # Send
         self._send_order_msg(trans)

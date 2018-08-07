@@ -26,17 +26,18 @@ class Strategy:
         :return None
         """
         self._logger.info('Tick receved. sec_code: %s, price: %s, vol:%s' % (sec_code, price, vol))
-        # if not self._flag and sec_code == 'RIU8':
-        #     self._broker.sell(class_code='SPBFUT', sec_code='RIU8', price=price - 50, quantity=1)
-        #     self._flag = True
+        if not self._flag and sec_code == 'RIU8':
+            #self._broker.buy(class_code='SPBFUT', sec_code='RIU8', price=price + 50, quantity=1)
+#            self._broker.sell(class_code='SPBFUT', sec_code='RIU8', price=price - 50, quantity=1)
+            self._flag = True
 
     def on_heartbeat(self):
         """
         Heartbeat received
         :return: None
         """
-        # if not self._heart_beating:
-        #     # Action during first heartbeat
-        #     self._broker.kill_all_orders()
-        #
-        # self._heart_beating = True
+    # if not self._heart_beating:
+    #     # Action during first heartbeat
+    #     self._broker.kill_all_orders()
+    #
+    # self._heart_beating = True
