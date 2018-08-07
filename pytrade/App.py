@@ -4,6 +4,7 @@ from pytrade.connector.quik.QuikConnector import QuikConnector
 from pytrade.connector.quik.QuikBroker import QuikBroker
 from pytrade.connector.quik.QuikFeed import QuikFeed
 from pytrade.Strategy import Strategy
+from pytrade.Config import Config
 
 
 class App:
@@ -15,12 +16,13 @@ class App:
 
     def __init__(self):
         self._logger.info("Initializing the App")
-        quik = QuikConnector(host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998')
+        config = Config
+        quik = QuikConnector(host=config.host, port=config.port, passwd=Config.passwd, account=config.account)
 
         # Create feed, subscribe events
         self._broker = QuikBroker(quik)
-        self._feed = QuikFeed(quik, 'SPBFUT', 'RIU8')
-        self._strategy = Strategy(self._feed, self._broker)
+        self._feed = QuikFeed(quik, config.sec_class, config.sec_code)
+        self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
 
     def main(self):
         """
