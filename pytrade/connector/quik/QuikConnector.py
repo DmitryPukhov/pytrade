@@ -12,7 +12,7 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
-
+    # Connector possible statuses:
     class Status(Enum):
         DISCONNECTED = 0
         CONNECTING = 1
@@ -86,11 +86,6 @@ class QuikConnector:
         self.status = QuikConnector.Status.CONNECTED
         self._logger.info('Authorized')
         self._create_subscribers_datasources()
-        # If authenticated, subscribe to data
-        # self._create_datasource(self.sec_code)
-        # Send order 4 test
-        # todo: remove this test code
-        # self._send_order(class_code='SPBFUT', sec_code='RIU8', quantity=1)
 
     def subscribe(self, class_code, sec_code, feed_callback):
         """
@@ -174,7 +169,6 @@ class QuikConnector:
         :param msg: message from quik, already decoded to a dictionary
         :return: None
         """
-
         if msg['callback_name'] != 'OnAllTrade':
             return
         result = msg['result']
@@ -204,10 +198,6 @@ class QuikConnector:
         :return:
         """
         self._last_trans_id += 1
-        # if stop_price is not None and stop_price != 0:
-        #     suffix = 'ACTION=NEW_STOP_ORDER\\nSTOPPRICE=%s' % (stop_price)
-        # else:
-        #     suffix = 'ACTION=NEW_ORDER'
         trans = 'ACTION=NEW_ORDER\\nACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
                 % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
         self._logger.info('Sending order: %s' % trans)
@@ -220,7 +210,6 @@ class QuikConnector:
         :param trans prepared transaction string for quik
         :return None
         """
-
         order_msg = '%s{"id": "order_%s","method": "sendTransaction","args": ["%s"]}' % (
             self._MSG_DELIMITER, self._last_trans_id, trans)
         self._logger.info('Sending order %s' % order_msg)
@@ -238,7 +227,6 @@ class QuikConnector:
          Run message processing loop
          Should be already connected
         """
-
         # Connecting
         self._connect_sock()
         self._auth()
@@ -289,12 +277,3 @@ class QuikConnector:
         self.status = QuikConnector.Status.DISCONNECTED
         self._sock.close()
         self._logger.info('Disconnected')
-
-
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-        datefmt="%Y-%m-%d %H:%M:%S")
-    # execute only if run as a script
-    # QuikConnector().run()

@@ -8,18 +8,10 @@ class QuikBroker:
     Broker facade for QuikConnector. Orders, account info etc.
     """
 
-    class Status(Enum):
-        STOPPED = 0
-        WAITING_REPLY = 1
-        ACTIVE = 3
-
-    _logger = logging.getLogger(__name__)
-
     def __init__(self, quik):
         self._quik = quik
         self._quik.broker_callbacks.append(self.on_account_info())
         self._quik.heartbeat_callbacks.add(self.on_heartbeat)
-        self._status = QuikBroker.Status.STOPPED
 
     def start(self):
         """
@@ -39,7 +31,7 @@ class QuikBroker:
         """
         self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='B', price=price, quantity=quantity)
 
-    def sell(self, class_code, sec_code, price, quantity, stop_price=0):
+    def sell(self, class_code, sec_code, price, quantity):
         """
         Send sell order to broker
         :param class_code security class, example 'SPBFUT'
@@ -62,6 +54,7 @@ class QuikBroker:
         print("Account info received")
 
     def on_heartbeat(self):
-        if self._status == self.Status.STOPPED:
-            # Request orders
-            self._status = self.Status.ACTIVE
+        """
+        Heartbeating reaction
+        :return:
+        """

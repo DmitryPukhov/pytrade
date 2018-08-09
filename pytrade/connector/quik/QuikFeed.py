@@ -16,8 +16,8 @@ class QuikFeed:
         """
         Constructor
         :param quik: QuikConnector instance
-        :param sec_code: security code, example 'SPBFUT'
-        :param sec_name:  security name, example 'RIU8'
+        :param class_code: sec class code, example 'SPBFUT'
+        :param sec_code:  security name, example 'RIU8'
         """
         self._quik = quik
         self._quik.heartbeat_callbacks.add(self.on_heartbeat)
