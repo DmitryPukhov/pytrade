@@ -16,7 +16,7 @@ class QuikBroker:
     _logger = logging.getLogger(__name__)
 
     def __init__(self, quik):
-        self._quik: QuikConnector = quik
+        self._quik = quik
         self._quik.broker_callbacks.append(self.on_account_info())
         self._quik.heartbeat_callbacks.add(self.on_heartbeat)
         self._status = QuikBroker.Status.STOPPED

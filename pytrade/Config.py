@@ -11,3 +11,5 @@ class Config:
     # Main asset: moex RTS index futures
     sec_class = 'SPBFUT'
     sec_code = 'RIU8'
+    #sec_class = 'CETS'
+    #sec_code = 'USDRUB_TOM'

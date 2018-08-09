@@ -36,17 +36,17 @@ class QuikFeed:
         if self._quik.status == QuikConnector.Status.DISCONNECTED:
             self._quik.run()
 
-    def on_tick(self, sec_code, sec_name, price, vol):
+    def on_tick(self, class_code, sec_code, tick_time, price, vol):
         """
         Tick callback
-        :param sec_code security code, example 'SPBFUT'
-        :param sec_name name of security, example 'RIU8'
+        :param class_code security code, example 'SPBFUT'
+        :param sec_code name of security, example 'RIU8'
         :param price: received price
         :param vol: received volume
         :return: None
         """
         for callback in self.tick_callbacks:
-            callback(sec_code, sec_name, price, vol)
+            callback(class_code, sec_code, tick_time, price, vol)
 
     def on_heartbeat(self):
         """

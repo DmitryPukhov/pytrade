@@ -2,6 +2,7 @@ import json
 import logging
 import socket
 from enum import Enum
+import datetime as dt
 import time
 
 
@@ -21,22 +22,22 @@ class QuikConnector:
     _MSG_ID_AUTH = 'msg_auth'
     _MSG_ID_CREATE_DATASOURCE = 'msg_create_ds'
     _MSG_ID_SET_UPDATE_CALLBACK = 'msg_set_upd_callback'
-    _MSG_DELIMITER: str = 'message:'
+    _MSG_DELIMITER = 'message:'
     _MSG_ID_GET_POS = 'msg_get_pos'
     _HEARTBEAT_SECONDS = 3
 
-    _buf_size: int = 65536
+    _buf_size = 65536
     _logger = logging.getLogger(__name__)
 
     # msg_encoding = 'UTF-8'
     msg_encoding = '1251'  # Quik sends messages in 1251 encoding.
 
     def __init__(self, host="192.168.1.104", port=1111, passwd='1', account='SPBFUT00998'):
-        self._logger.setLevel(logging.DEBUG)
+        self._logger.setLevel(logging.INFO)
         self._host = host
         self._port = port
         self._passwd = passwd
-        self._sock: socket = None
+        self._sock = None
         self._account = account
         self._last_trans_id = 0
         self.status = self.Status.DISCONNECTED
@@ -182,7 +183,12 @@ class QuikConnector:
         callback = self._feed_callbacks.get((class_code, sec_code))
         if callback is not None:
             self._logger.debug('Feed callback found for class_code=%s, sec_code=%s' % (class_code, sec_code))
-            callback(class_code, sec_code, result['price'], result['qty'])
+
+            res_dt = result['datetime']
+            tick_time = dt.datetime(res_dt['year'], res_dt['month'], res_dt['day'], res_dt['hour'], res_dt['min'],
+                                    res_dt['sec'], res_dt['ms'])
+
+            callback(class_code, sec_code, tick_time, result['price'], result['qty'])
 
     def send_order(self, class_code, sec_code, operation, price, quantity):
         """
@@ -252,7 +258,7 @@ class QuikConnector:
                             continue  # Skip empty '' messages
                         # Parse single message
                         try:
-                            msg: dict = json.loads(data_item)
+                            msg = json.loads(data_item)
                             msg_id = msg['id']
 
                             # Call callback for this message
