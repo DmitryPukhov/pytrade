@@ -12,6 +12,7 @@ class QuikConnector:
     Quik side should have these Lua scripts installed:
     https://github.com/Arseniys1/QuikSocketTransfer
     """
+
     # Connector possible statuses:
     class Status(Enum):
         DISCONNECTED = 0
@@ -187,18 +188,16 @@ class QuikConnector:
     def send_order(self, class_code, sec_code, operation, price, quantity):
         """
         Buy/sell order
-        :param type 'L' for limit
         :param class_code security class, example 'SPBFUT'
         :param sec_code code of security, example 'RIU8'
         :param operation B for buy, S for sell
         :param price for limit order. For market order set price to 0
-        :param stop_price stop loss
-        :param tra_stop_price trailing stop
         :param quantity number of items to buy/sell
         :return:
         """
         self._last_trans_id += 1
-        trans = 'ACTION=NEW_ORDER\\nACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\nTRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
+        trans = 'ACTION=NEW_ORDER\\nACCOUNT=%s\\nCLIENT_CODE=%s\\nTYPE=L\\n\
+        TRANS_ID=%d\\nCLASSCODE=%s\\nSECCODE=%s\\nOPERATION=%s\\nPRICE=%s\\nQUANTITY=%d' \
                 % (self._account, self._account, self._last_trans_id, class_code, sec_code, operation, price, quantity)
         self._logger.info('Sending order: %s' % trans)
         # Send

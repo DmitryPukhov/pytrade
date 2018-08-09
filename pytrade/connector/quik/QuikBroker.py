@@ -7,6 +7,7 @@ class QuikBroker:
     """
     Broker facade for QuikConnector. Orders, account info etc.
     """
+    _logger = logging.getLogger(__name__)
 
     def __init__(self, quik):
         self._quik = quik
@@ -51,7 +52,7 @@ class QuikBroker:
         """
         Account information changed callback
         """
-        print("Account info received")
+        self._logger.info("Account info received")
 
     def on_heartbeat(self):
         """
