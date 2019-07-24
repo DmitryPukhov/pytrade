@@ -11,7 +11,7 @@ Robot and broker's terminal can be the on the same or different machines.
 
 * **Windows** OS or **Linux** with **Wine**. 
 * [Quik](https://arqatech.com/en/products/quik/) - Quik trading terminal.
-* [QuikSocketTransfer](https://github.com/Arseniys1/QuikSocketTransfer) added to Quik.
+* [QuikSocketTransfer](https://github.com/demen777/QuikSocketTransfer) added to Quik.
 Disclamer: Quik works with Wine, but I didn't try QuikSocketTransfer library on it.
 
 
