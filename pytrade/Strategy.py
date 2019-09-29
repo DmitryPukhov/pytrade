@@ -1,5 +1,5 @@
 import logging
-import talib as ta
+#import talib as ta
 import pandas as pd
 import datetime as dt
 
@@ -32,8 +32,6 @@ class Strategy:
     def on_tick(self, class_code, asset_code, tick_time, price, vol):
         """
         New price/vol tick received
-        @param class_code exchange SPBFUT for
-        :return None
         """
         # Add tick to data
         self.data.loc[pd.to_datetime(tick_time)] = [price, vol]
