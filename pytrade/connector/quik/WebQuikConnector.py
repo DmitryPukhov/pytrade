@@ -137,7 +137,7 @@ class WebQuikConnector:
 
     def _on_data(self, data: dict):
         """
-        Process message with price data
+        Process message with level1 or level2 data
         Received msg with data. Msg can contain bid, ask, last fields
         :param data: dictionary like
             {"msgid":21011,"dataResult":{"CETS\u00A6EUR_RUB__TOM":{"last":70.74,"lastchange":-0.01,"offer":70.7375}}}
@@ -161,8 +161,9 @@ class WebQuikConnector:
             asset = str2tuple(asset_encoded)
             price = data_result[asset_encoded].get('last')
             if price is not None:
+                # If it is level1 message, send it to tick feed
                 self._feed_subscribers[asset](asset[0], asset[1], tick_time, price, 0)
-        print(feeds_encoded)
+            # todo: implement level2 feed
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
