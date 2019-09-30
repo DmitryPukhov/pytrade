@@ -1,26 +1,13 @@
 # pytrade
+Trading robots written in Python. Connects directly to web quik server to read data and make orders. 
 
-Trading robots written in Python. Contain connector to broker client terminal to read data and make orders. 
-My broker's terminal is [Quik](https://arqatech.com/en/products/quik/). 
-Also  socket based interop library [QuikSocketTransfer](https://github.com/Arseniys1/QuikSocketTransfer) required.
+## Current status
+Feed implemented. Orders are under development.
 
 ## Prerequisites
-Robot and broker's terminal can be the on the same or different machines. 
+Demo or live account with web quik https://arqatech.com/en/products/quik/terminals/user-applications/webquik/ from any broker. 
+I use demo account at [junior.webquik.ru](https://junior.webquik.ru/).
 
-### Server 
+## Setting up
+Configure **server**, **account** and **passwd** variables in **Config.py**
 
-* **Windows** OS or **Linux** with **Wine**. 
-* [Quik](https://arqatech.com/en/products/quik/) - Quik trading terminal.
-* [QuikSocketTransfer](https://github.com/demen777/QuikSocketTransfer) added to Quik.
-Disclamer: Quik works with Wine, but I didn't try QuikSocketTransfer library on it.
-
-
-### Client
-* Any OS
-* Python 3
-
-## Current working configuration:
-``` 
-* Server: Virtual machine, with Windows XP SP3, Quik and QuikSocketTransfer
-* Client and host for server virtual machine: Ubuntu 18.04 with Python 3.7
-```
