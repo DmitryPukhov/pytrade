@@ -82,8 +82,8 @@ class WebQuikConnector:
         Login just after web socket has been opened
         """
         auth_msg = '{"msgid":10000,"login":"' + self._account + '","password":"' + self._passwd \
-                   + '","width":"200","height":"200","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' \
-                     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36","lang":"ru",' \
+                   + '","width":"200","height":"200","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
+                     '(KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36","lang":"ru",' \
                      '"sid":"144f9.2b851e74","version":"6.6.1"} '
         self._ws.send(auth_msg)
 
