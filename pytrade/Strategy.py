@@ -35,7 +35,7 @@ class Strategy:
         """
         # Add tick to data
         self.data.loc[pd.to_datetime(tick_time)] = [price, vol]
-
+        self._logger.debug("Received tick: time=%s, asset=%s\\%s, price=%s, vol=%s", tick_time, class_code, asset_code, price, vol)
         # Debugging code
         # if (tick_time - self._last_tick_time).seconds > 10:
         #     print("last ticks:")

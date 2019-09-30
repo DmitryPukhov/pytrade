@@ -10,5 +10,5 @@ class Config:
     passwd = '12345'
 
     # Main asset
-    sec_class = 'TQBR'
-    sec_code = 'GAZP'
+    sec_class = 'QJSIM'
+    sec_code = 'SBER'

@@ -48,9 +48,9 @@ class QuikFeed:
         for callback in self.tick_callbacks:
             callback(class_code, sec_code, tick_time, price, vol)
 
-    def on_heartbeat(self, *args):
+    def on_heartbeat(self):
         """
         Listen heartbeat from connector and call subscribers
         """
         for callback in self.heartbeat_callbacks:
-            callback(args)
+            callback()

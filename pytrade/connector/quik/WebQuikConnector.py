@@ -1,9 +1,9 @@
 import json
 import logging
+from datetime import datetime
 from enum import Enum
-
 import websocket
-from websocket import WebSocketApp
+from websocket import WebSocketApp, ABNF
 
 
 class WebQuikConnector:
@@ -35,6 +35,7 @@ class WebQuikConnector:
     _MSG_ID_EXIT = 10006
     _MSG_ID_CREATE_DATASOURCE = 11016
     _MSG_ID_CREATE_LEVEL2_DATASOURCE = 11014
+    _MSG_ID_DATA = 21011
     _HEARTBEAT_SECONDS = 3
 
     _logger = logging.getLogger(__name__)
@@ -56,7 +57,8 @@ class WebQuikConnector:
 
         # Callbacks for different messages msgid
         # Socket callback self._on_message will call these
-        self._callbacks = {self._MSG_ID_AUTH: self._on_auth}
+        self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
+                           self._MSG_ID_DATA: self._on_data}
 
         # Subscribers for data feed
         self._feed_subscribers = {}
@@ -112,24 +114,55 @@ class WebQuikConnector:
         Request data from quik
         """
         msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (self._MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 15)
+        msg = msg.encode()
         self._logger.debug('Sending msg: %s' % msg)
         self._ws.send(msg)
         msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
               (self._MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, 30)
         self._logger.debug('Sending msg: %s' % msg)
-        self._ws.send(msg)
+        self._ws.send(msg, opcode=ABNF.OPCODE_BINARY)
+        self._ws.send('{"msgid":10008}')
 
-    def _on_message(self, strmsg):
+    def _on_message(self, raw_msg):
         """
         Entry for message processing. Call specific processors for different messages.
         """
-        msg = json.loads(strmsg)
+        strmsg = raw_msg.decode()
         self._logger.debug('Got msg %s', strmsg)
-
+        msg = json.loads(strmsg)
         # Find and execute callback function for this message
         callback = self._callbacks.get(msg['msgid'])
         if callback:
             callback(msg)
+
+    def _on_data(self, data: dict):
+        """
+        Process message with price data
+        Received msg with data. Msg can contain bid, ask, last fields
+        :param data: dictionary like
+            {"msgid":21011,"dataResult":{"CETS\u00A6EUR_RUB__TOM":{"last":70.74,"lastchange":-0.01,"offer":70.7375}}}
+        """
+
+        # Conversions of class, asset in data
+        def str2tuple(s):
+            return tuple(s.split("¦"))
+
+        def tuple2str(t):
+            return "%s¦%s" % (t[0], t[1])
+
+        # Find assets who has subscribers
+        data_result = dict(data['dataResult'])
+        all_feeds_encoded = set(map(tuple2str, self._feed_subscribers.keys()))
+        feeds_encoded = set(data_result.keys()).intersection(all_feeds_encoded)
+
+        for asset_encoded in feeds_encoded:
+            # Time not come from quik server
+            tick_time = datetime.now()
+            asset = str2tuple(asset_encoded)
+            price = data_result[asset_encoded].get('last')
+            if price is not None:
+                self._feed_subscribers[asset](asset[0], asset[1], tick_time, price, 0)
+        print(feeds_encoded)
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
@@ -163,5 +196,5 @@ class WebQuikConnector:
 
     def _on_heartbeat(self, *args):
         for callback in self.heartbeat_subscribers:
-            callback(args)
+            callback()
         self._heartbeat_cnt += 1
