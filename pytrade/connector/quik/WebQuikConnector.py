@@ -11,6 +11,7 @@ class WebQuikConnector:
     Socket interactions with WebQuik server.
     Use web quik server, login and password, provided by broker.
     Demo account could be created chere: https://junior.webquik.ru
+    ToDo: process quotes 21016 and level2 21014 messages instead of general data 21011
     """
 
     # Connector possible statuses:
@@ -32,10 +33,13 @@ class WebQuikConnector:
     # связ.стоп-заявке",22003:"Ответ по услов.стоп-заявке",22004:"Ответ по FX-заявке",22100:"Ответ по снятию заявки",
     # 22101:"Ответ по снятию стоп-заявки"},
     _MSG_ID_AUTH = 20006
+    _MSG_ID_TRADE_SESSION_OPEN = 20000
     _MSG_ID_EXIT = 10006
     _MSG_ID_CREATE_DATASOURCE = 11016
     _MSG_ID_CREATE_LEVEL2_DATASOURCE = 11014
     _MSG_ID_DATA = 21011
+    _MSG_ID_GRAPH = 21016
+    _MSG_ID_LEVEL2 = 21014
     _HEARTBEAT_SECONDS = 3
 
     _logger = logging.getLogger(__name__)
@@ -48,7 +52,7 @@ class WebQuikConnector:
                                                         on_error=self._on_error,
                                                         on_close=self._on_close,
                                                         on_pong=self._on_heartbeat)
-        self._ws.on_open = self._on_open
+        self._ws.on_open = self._on_socket_open
 
         self._passwd = passwd
         self._account = account
@@ -58,7 +62,9 @@ class WebQuikConnector:
         # Callbacks for different messages msgid
         # Socket callback self._on_message will call these
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
-                           self._MSG_ID_DATA: self._on_data}
+                           self._MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
+                           self._MSG_ID_DATA: self._on_data
+                           }
 
         # Subscribers for data feed
         self._feed_subscribers = {}
@@ -77,8 +83,9 @@ class WebQuikConnector:
         # Run loopo
         self._ws.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
 
-    def _on_open(self):
+    def _on_socket_open(self):
         """
+        Socket on_open handler
         Login just after web socket has been opened
         """
         auth_msg = '{"msgid":10000,"login":"' + self._account + '","password":"' + self._passwd \
@@ -87,41 +94,51 @@ class WebQuikConnector:
                      '"sid":"144f9.2b851e74","version":"6.6.1"} '
         self._ws.send(auth_msg)
 
+    def _on_trade_session_open(self, msg):
+        """
+        Trade session is opened. Now we can request data and set orders
+        """
+        if msg['resultCode'] == 0:
+            self._logger.info('Authenticated')
+            self.status = WebQuikConnector.Status.CONNECTED
+            self._logger.info('Connected. Trade session is opened')
+            # Request feeds for subscribers from server
+            for (class_code, sec_code), value in self._feed_subscribers.items():
+                self._request_feed(class_code, sec_code)
+        else:
+            # Not opened, failure failed
+            self.status = WebQuikConnector.Status.DISCONNECTED
+            self.close()
+            raise ConnectionError('Trade session opening failure: %s' % msg)
+
     def _on_auth(self, msg):
         """
         Authentication has passed, subscribe the feed and broker.
         """
-        if msg['resultCode'] != 0:
+        if msg['resultCode'] == 0:
+            self._logger.info('Authenticated')
+        else:
             # Auth failed
-            raise ConnectionError("Authentication failed: " + msg['serverMessage'])
-        # Auth is good
-        self.status = WebQuikConnector.Status.CONNECTED
-        self._logger.info('Connected')
-        # Request feeds for subscribers from server
-        self._request_feeds()
-
-    def _request_feeds(self):
-        """
-        Request feed for every asset from feed_callbacks
-        feed_callback already contains map (class_code, sec_code): feed callback function
-        :return: None
-        """
-        for (class_code, sec_code), value in self._feed_subscribers.items():
-            self._request_feed(class_code, sec_code)
+            self.status = WebQuikConnector.Status.DISCONNECTED
+            self.close()
+            raise ConnectionError('Authentication failure: %s' % msg)
 
     def _request_feed(self, class_code, sec_code):
         """
         Request data from quik
         """
+        # Request quotes
+        self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
         msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (self._MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 15)
         msg = msg.encode()
         self._logger.debug('Sending msg: %s' % msg)
         self._ws.send(msg)
+        # Request level2 data
+        self._logger.info('Requesting level2 data for %s\\%s', class_code, sec_code)
         msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
               (self._MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, 30)
         self._logger.debug('Sending msg: %s' % msg)
         self._ws.send(msg, opcode=ABNF.OPCODE_BINARY)
-        self._ws.send('{"msgid":10008}')
 
     def _on_message(self, raw_msg):
         """
