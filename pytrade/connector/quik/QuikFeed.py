@@ -8,7 +8,7 @@ class QuikFeed:
     Provides ticks data stream from quik
     """
     _logger = logging.getLogger(__name__)
-    tick_callbacks = set()
+    feed_callbacks = set()
     heartbeat_callbacks = set()
 
     def __init__(self, quik: WebQuikConnector, class_code, sec_code):
@@ -23,7 +23,7 @@ class QuikFeed:
         self.class_code = class_code
         self.sec_code = sec_code
         # Subscribe to data stream
-        self._quik.subscribe(self.class_code, self.sec_code, self.on_tick)
+        self._quik.subscribe(self.class_code, self.sec_code, self.on_feed)
 
     def start(self):
         """
@@ -35,18 +35,12 @@ class QuikFeed:
         if self._quik.status == WebQuikConnector.Status.DISCONNECTED:
             self._quik.run()
 
-    def on_tick(self, class_code, sec_code, tick_time, price, vol):
+    def on_feed(self, class_code, sec_code, dt, o, h, l, c, v):
         """
-        Tick callback
-        :param class_code security code, example 'SPBFUT'
-        :param sec_code name of security, example 'RIU8'
-        :param price: received price
-        :param tick_time time
-        :param vol: received volume
-        :return: None
+        Price data
         """
-        for callback in self.tick_callbacks:
-            callback(class_code, sec_code, tick_time, price, vol)
+        for callback in self.feed_callbacks:
+            callback(class_code, sec_code, dt, o, h, l, c, v)
 
     def on_heartbeat(self):
         """

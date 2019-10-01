@@ -63,7 +63,8 @@ class WebQuikConnector:
         # Socket callback self._on_message will call these
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
-                           self._MSG_ID_DATA: self._on_data
+                           #self._MSG_ID_DATA: self._on_data,
+                           self._MSG_ID_GRAPH: self._on_feed
                            }
 
         # Subscribers for data feed
@@ -129,14 +130,15 @@ class WebQuikConnector:
         """
         # Request quotes
         self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
-        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (self._MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 15)
+        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (self._MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 0)
         msg = msg.encode()
         self._logger.debug('Sending msg: %s' % msg)
         self._ws.send(msg)
         # Request level2 data
         self._logger.info('Requesting level2 data for %s\\%s', class_code, sec_code)
+        depth = 30
         msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
-              (self._MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, 30)
+              (self._MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, depth)
         self._logger.debug('Sending msg: %s' % msg)
         self._ws.send(msg, opcode=ABNF.OPCODE_BINARY)
 
@@ -145,42 +147,76 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        self._logger.debug('Got msg %s', strmsg)
+        #self._logger.debug('Got msg %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         callback = self._callbacks.get(msg['msgid'])
         if callback:
             callback(msg)
 
-    def _on_data(self, data: dict):
-        """
-        Process message with level1 or level2 data
-        Received msg with data. Msg can contain bid, ask, last fields
-        :param data: dictionary like
-            {"msgid":21011,"dataResult":{"CETS\u00A6EUR_RUB__TOM":{"last":70.74,"lastchange":-0.01,"offer":70.7375}}}
-        """
-
         # Conversions of class, asset in data
-        def str2tuple(s):
-            return tuple(s.split("¦"))
 
-        def tuple2str(t):
-            return "%s¦%s" % (t[0], t[1])
+    @staticmethod
+    def _asset2tuple(s):
+        """
+        Converts quik asset string to tuple(class, code)
+        """
+        # Split s and return first 2 parts - class and code
+        parts: list = s.split("¦")
+        return tuple([parts[0], parts[1]])
 
-        # Find assets who has subscribers
-        data_result = dict(data['dataResult'])
-        all_feeds_encoded = set(map(tuple2str, self._feed_subscribers.keys()))
-        feeds_encoded = set(data_result.keys()).intersection(all_feeds_encoded)
+    @staticmethod
+    def _tuple2asset(t: tuple):
+        """
+        Converts asset tuple(class, code) to quik compatible string class¦code
+        """
+        return "%s¦%s" % (t[0], t[1])
 
-        for asset_encoded in feeds_encoded:
-            # Time not come from quik server
-            tick_time = datetime.now()
-            asset = str2tuple(asset_encoded)
-            price = data_result[asset_encoded].get('last')
-            if price is not None:
-                # If it is level1 message, send it to tick feed
-                self._feed_subscribers[asset](asset[0], asset[1], tick_time, price, 0)
-            # todo: implement level2 feed
+    # def _on_data(self, data: dict):
+    #     """
+    #     Process message with level1 or level2 data
+    #     Received msg with data. Msg can contain bid, ask, last fields
+    #     :param data: dictionary like
+    #         {"msgid":21011,"dataResult":{"CETS\u00A6EUR_RUB__TOM":{"last":70.74,"lastchange":-0.01,"offer":70.7375}}}
+    #     """
+    #
+    #     # Find assets who has subscribers
+    #     data_result = dict(data['dataResult'])
+    #     all_feeds_encoded = set(map(self._tuple2asset, self._feed_subscribers.keys()))
+    #     feeds_encoded = set(data_result.keys()).intersection(all_feeds_encoded)
+    #
+    #     for asset_encoded in feeds_encoded:
+    #         # Time not come from quik server
+    #         tick_time = datetime.now()
+    #         (asset_class, asset_code) = self._asset2tuple(asset_encoded)
+    #         price = data_result[asset_encoded].get('last')
+    #         if price is not None:
+    #             # If it is level1 message, send it to tick feed
+    #             self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, tick_time, price, 0)
+    #         # todo: implement level2 feed
+
+    def _on_feed(self, data: dict):
+        """
+        Ohlc data callback
+        :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01
+        10:02:00","o":22649,"c":22647,"h":22649,"l":22646,"v":1889}]}} :return:
+        """
+        self._logger.debug('Got feed: %s', data)
+
+        for asset_str in data['graph'].keys():
+            # Each asset in data['graph']
+            (asset_class, asset_code) = self._asset2tuple(asset_str)
+            asset_data = data['graph'][asset_str]
+            for ohlcv in asset_data:
+                # Each ohlcv for this asset
+                dt = datetime.fromisoformat(ohlcv['d'])
+                o = ohlcv['o']
+                h = ohlcv['h']
+                l = ohlcv['l']
+                c = ohlcv['c']
+                v = ohlcv['v']
+                # Send data to subscribers
+                self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, dt, o, h, l, c, v)
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
