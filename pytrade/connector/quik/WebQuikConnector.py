@@ -45,6 +45,7 @@ class WebQuikConnector:
     _logger = logging.getLogger(__name__)
 
     def __init__(self, conn, account, passwd):
+        self._logger.setLevel("INFO")
         # Create websocket, not open and run here
         self._conn = conn
         self._ws: WebSocketApp = websocket.WebSocketApp(self._conn,
@@ -63,12 +64,15 @@ class WebQuikConnector:
         # Socket callback self._on_message will call these
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
-                           #self._MSG_ID_DATA: self._on_data,
-                           self._MSG_ID_GRAPH: self._on_feed
+                           # self._MSG_ID_DATA: self._on_data,
+                           self._MSG_ID_GRAPH: self._on_feed,
+                           self._MSG_ID_LEVEL2: self._on_level2
                            }
 
         # Subscribers for data feed
         self._feed_subscribers = {}
+        self._level2_subscribers = {}
+
         # Broker information subscribers
         self.broker_subscribers = []
         # Heart beat support
@@ -147,7 +151,7 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        #self._logger.debug('Got msg %s', strmsg)
+        # self._logger.debug('Got msg %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         callback = self._callbacks.get(msg['msgid'])
@@ -172,29 +176,6 @@ class WebQuikConnector:
         """
         return "%s¦%s" % (t[0], t[1])
 
-    # def _on_data(self, data: dict):
-    #     """
-    #     Process message with level1 or level2 data
-    #     Received msg with data. Msg can contain bid, ask, last fields
-    #     :param data: dictionary like
-    #         {"msgid":21011,"dataResult":{"CETS\u00A6EUR_RUB__TOM":{"last":70.74,"lastchange":-0.01,"offer":70.7375}}}
-    #     """
-    #
-    #     # Find assets who has subscribers
-    #     data_result = dict(data['dataResult'])
-    #     all_feeds_encoded = set(map(self._tuple2asset, self._feed_subscribers.keys()))
-    #     feeds_encoded = set(data_result.keys()).intersection(all_feeds_encoded)
-    #
-    #     for asset_encoded in feeds_encoded:
-    #         # Time not come from quik server
-    #         tick_time = datetime.now()
-    #         (asset_class, asset_code) = self._asset2tuple(asset_encoded)
-    #         price = data_result[asset_encoded].get('last')
-    #         if price is not None:
-    #             # If it is level1 message, send it to tick feed
-    #             self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, tick_time, price, 0)
-    #         # todo: implement level2 feed
-
     def _on_feed(self, data: dict):
         """
         Ohlc data callback
@@ -212,11 +193,27 @@ class WebQuikConnector:
                 dt = datetime.fromisoformat(ohlcv['d'])
                 o = ohlcv['o']
                 h = ohlcv['h']
-                l = ohlcv['l']
+                l_ = ohlcv['l']
                 c = ohlcv['c']
                 v = ohlcv['v']
                 # Send data to subscribers
-                self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, dt, o, h, l, c, v)
+                self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, dt, o, h, l_, c, v)
+
+    def _on_level2(self, data: dict):
+        """
+        Level 2 data handler. Quik sends us full level2 snapshot.
+        """
+        # Sample of level2. {'msgid': 21014, 'quotes': {'QJSIM¦SBER': {'lines': {'22806':
+        # {'b': 234, 's': 0, 'by': 0, 'sy': 0}, '22841': {'b': 437, 's': 0, 'by': 0, 'sy': 0},
+        # '22853': {'b': 60, 's': 0, 'by': 0, 'sy': 0}, '22878': {'b': 82, 's': 0, 'by': 0, 'sy': 0},
+        # '22886': {'b': 138, 's': 0, 'by': 0, 'sy': 0}, '22895': {'b': 1, 's': 0, 'by': 0, 'sy': 0},...
+
+        # Go through all assets in level2 message
+        for assetencoded in data['quotes']:
+            classcode, assetcode = self._asset2tuple(assetencoded)
+            if self._level2_subscribers[(classcode, assetcode)] is not None:
+                # If somebody subscribed to level2 of this asset, send her this data.
+                self._level2_subscribers[(classcode, assetcode)]()
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
@@ -235,15 +232,20 @@ class WebQuikConnector:
         self.status = WebQuikConnector.Status.DISCONNECTED
         self._logger.info('Disconnected')
 
-    def subscribe(self, class_code, sec_code, feed_callback):
+    def subscribe(self, class_code, sec_code, feed_callback, level2_callback):
         """
         Subscribe to data for given security
         :param class_code security class, example 'SPBFUT'
         :param sec_code code of security, example 'RIU8'
         :param feed_callback callback function to pass price/volume into
+        :param level2_callback callback function to pass level2 into
         """
         # Register given feed callback
         self._feed_subscribers[(class_code, sec_code)] = feed_callback
+
+        # Register given feed callback
+        self._level2_subscribers[(class_code, sec_code)] = level2_callback
+
         # Request this feed from server
         if self.status == WebQuikConnector.Status.CONNECTED:
             self._request_feed(class_code, sec_code)

@@ -5,10 +5,11 @@ from pytrade.connector.quik.WebQuikConnector import WebQuikConnector
 class QuikFeed:
     """
     Data feed facade for QuikConnector.
-    Provides ticks data stream from quik
+    Provides price and level2 data stream from quik for specific assets.
     """
     _logger = logging.getLogger(__name__)
     feed_callbacks = set()
+    level2_callbacks = set()
     heartbeat_callbacks = set()
 
     def __init__(self, quik: WebQuikConnector, class_code, sec_code):
@@ -23,7 +24,7 @@ class QuikFeed:
         self.class_code = class_code
         self.sec_code = sec_code
         # Subscribe to data stream
-        self._quik.subscribe(self.class_code, self.sec_code, self.on_feed)
+        self._quik.subscribe(self.class_code, self.sec_code, self.on_feed, self.on_level2)
 
     def start(self):
         """
@@ -41,6 +42,10 @@ class QuikFeed:
         """
         for callback in self.feed_callbacks:
             callback(class_code, sec_code, dt, o, h, l, c, v)
+
+    def on_level2(self):
+        for callback in self.level2_callbacks:
+            callback()
 
     def on_heartbeat(self):
         """

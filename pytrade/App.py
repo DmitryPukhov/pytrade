@@ -24,6 +24,7 @@ class App:
         # Todo: support making orders
         # self._broker = QuikBroker(quik)
         self._broker = None
+        #self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
         self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
         # feed2csv = Feed2Csv(self._feed, config.sec_class, config.sec_code)
 

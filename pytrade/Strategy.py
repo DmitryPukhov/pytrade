@@ -22,6 +22,7 @@ class Strategy:
         self._broker = broker
 
         # Connecting to feed
+        self._feed.level2_callbacks.add(self.on_level2)
         self._feed.feed_callbacks.add(self.on_feed)
         self._feed.heartbeat_callbacks.add(self.on_heartbeat)
         self._heart_beating = False
@@ -39,8 +40,11 @@ class Strategy:
         ticker = asset_class + '/' + asset
         row = [ticker, o, h, l, c, v]
         self.data.at[pd.to_datetime(dt), self.data.columns] = row
-        self._logger.debug("Received data for time=%s, data:%s", dt, row)
+        self._logger.debug("Received feed for time=%s, data:%s", dt, row)
         self._last_tick_time = dt
+
+    def on_level2(self):
+        self._logger.debug("Received level2")
 
     def on_heartbeat(self):
         """
