@@ -1,6 +1,6 @@
-from datetime import datetime
 import backtrader as bt
 import pandas as pd
+
 
 class TestStrategy(bt.Strategy):
 
