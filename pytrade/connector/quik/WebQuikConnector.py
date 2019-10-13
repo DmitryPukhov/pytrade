@@ -209,11 +209,24 @@ class WebQuikConnector:
         # '22886': {'b': 138, 's': 0, 'by': 0, 'sy': 0}, '22895': {'b': 1, 's': 0, 'by': 0, 'sy': 0},...
 
         # Go through all assets in level2 message
-        for assetencoded in data['quotes']:
-            classcode, assetcode = self._asset2tuple(assetencoded)
-            if self._level2_subscribers[(classcode, assetcode)] is not None:
-                # If somebody subscribed to level2 of this asset, send her this data.
-                self._level2_subscribers[(classcode, assetcode)]()
+        for asset_str in data['quotes']:
+            asset_class, asset_code = self._asset2tuple(asset_str)
+            if self._level2_subscribers[(asset_class, asset_code)] is not None:
+                # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
+                level2_quik: dict = data['quotes'][asset_str]['lines']
+                level2 = {}
+                for key in level2_quik.keys():
+                    price = int(key)
+                    bid = level2_quik[key]['b']
+                    if bid == 0:
+                        bid = None
+                    ask = level2_quik[key]['s']
+                    if ask == 0:
+                        ask = None
+                    level2[price] = (bid, ask)
+
+                    # If somebody subscribed to level2 of this asset, send her this data.
+                self._level2_subscribers[(asset_class, asset_code)](asset_class, asset_code, datetime.now(), level2)
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)

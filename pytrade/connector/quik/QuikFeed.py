@@ -36,16 +36,16 @@ class QuikFeed:
         if self._quik.status == WebQuikConnector.Status.DISCONNECTED:
             self._quik.run()
 
-    def on_feed(self, class_code, sec_code, dt, o, h, l, c, v):
+    def on_feed(self, asset_class, asset_code, dt, o, h, l, c, v):
         """
         Price data
         """
         for callback in self.feed_callbacks:
-            callback(class_code, sec_code, dt, o, h, l, c, v)
+            callback(asset_class, asset_code, dt, o, h, l, c, v)
 
-    def on_level2(self):
+    def on_level2(self, asset_class, asset_code, dt, level2):
         for callback in self.level2_callbacks:
-            callback()
+            callback(asset_class, asset_code, dt, level2)
 
     def on_heartbeat(self):
         """

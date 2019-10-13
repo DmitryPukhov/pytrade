@@ -43,8 +43,8 @@ class Strategy:
         self._logger.debug("Received feed for time=%s, data:%s", dt, row)
         self._last_tick_time = dt
 
-    def on_level2(self):
-        self._logger.debug("Received level2")
+    def on_level2(self, asset_class, asset_code, dt, level2):
+        self._logger.debug("Received level2 for time = %s. %s/%s. Data: %s", dt, asset_class, asset_code, level2)
 
     def on_heartbeat(self):
         """
