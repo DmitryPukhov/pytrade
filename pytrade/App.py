@@ -37,7 +37,7 @@ class App:
             format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
             datefmt="%Y-%m-%d %H:%M:%S",
             handlers=[
-                #handlers.RotatingFileHandler("pytrade.log", maxBytes=(1048576 * 5), backupCount=3),
+                # handlers.RotatingFileHandler("pytrade.log", maxBytes=(1048576 * 5), backupCount=3),
                 logging.StreamHandler()
             ])
         self._feed.start()
