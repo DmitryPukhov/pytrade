@@ -1,7 +1,6 @@
 import logging
-from logging import handlers
 
-from pytrade.Feed2Csv import Feed2Csv
+from pytrade.feed.Feed2Csv import Feed2Csv
 from pytrade.Strategy import Strategy
 from pytrade.connector.quik.QuikFeed import QuikFeed
 from pytrade.Config import Config

@@ -1,14 +1,10 @@
-import logging
 # import talib as ta
 import pandas as pd
-import datetime as dt
-
-from pytrade.Feed import Feed
-
+from pytrade.feed.BaseFeed import BaseFeed
 pd.options.display.width = 0
 
 
-class Strategy(Feed):
+class Strategy(BaseFeed):
     # """
     # Strategy receives data from feed and make orders to broker
     # """
@@ -18,6 +14,7 @@ class Strategy(Feed):
     def __init__(self, feed, broker, sec_class, sec_code):
         super().__init__(feed, sec_class, sec_code)
         self._broker = broker
+
     #     self._feed = feed
     #     self.sec_class = sec_class
     #     self.sec_code = sec_code

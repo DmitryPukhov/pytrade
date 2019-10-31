@@ -1,17 +1,14 @@
 import logging
-import pandas as pd
 import datetime as dt
 import os
+from pytrade.feed.BaseFeed import BaseFeed
 
-from pytrade.Feed import Feed
-
-
-class Feed2Csv(Feed):
+class Feed2Csv(BaseFeed):
     """
     Receive ticks and level 2 and persist to csv
     """
     _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
+    _logger.setLevel(logging.INFO)
 
     def __init__(self, feed, sec_class, sec_code, dir='./data'):
         super().__init__(feed, sec_class, sec_code)

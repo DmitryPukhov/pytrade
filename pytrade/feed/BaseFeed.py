@@ -1,14 +1,12 @@
 import logging
-# import talib as ta
 import pandas as pd
 import datetime as dt
-
 pd.options.display.width = 0
 
 
-class Feed:
+class BaseFeed:
     """
-    Strategy receives data from feed and make orders to broker
+    Base class for any feed
     """
     _logger = logging.getLogger(__name__)
     _logger.setLevel(logging.INFO)
@@ -27,7 +25,8 @@ class Feed:
         self._last_tick_time = self._last_heartbeat = dt.datetime.min
 
         # Main data with price etc.
-        self.candles: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
+        self.candles: pd.DataFrame = pd.DataFrame(
+            columns=['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
         self.candles.set_index(['datetime', 'ticker'], inplace=True)
         self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
         self.level2.set_index(['datetime', 'ticker', 'price'], inplace=True)
