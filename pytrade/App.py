@@ -43,7 +43,21 @@ class App:
         self._feed.start()
         # Todo: support making orders
         # self._broker.start()
-
-
-if __name__ == "__main__":
-    App().main()
+#
+#
+# import pandas as pd
+# import numpy as np
+#
+# df = pd.read_csv("./data/QJSIM_SBER_2019-10-31.csv", parse_dates=[0, 1])
+# df.columns = ['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume']
+# df.set_index(['datetime', 'ticker'], inplace=True)
+# df.index.levels[0].dayofyear, df.index.levels[1]
+#
+#
+# days = np.unique(df.index.levels[0].dayofyear)
+# for day in days:
+#     df2 = df[df.index.levels[0].dayofyear == day]
+#     print(df2.head())
+#
+# if __name__ == "__main__":
+#     App().main()
