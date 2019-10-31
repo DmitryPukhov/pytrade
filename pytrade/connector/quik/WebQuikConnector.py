@@ -65,7 +65,7 @@ class WebQuikConnector:
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
                            # self._MSG_ID_DATA: self._on_data,
-                           self._MSG_ID_GRAPH: self._on_feed,
+                           self._MSG_ID_GRAPH: self._on_candle,
                            self._MSG_ID_LEVEL2: self._on_level2
                            }
 
@@ -130,7 +130,7 @@ class WebQuikConnector:
 
     def _request_feed(self, class_code, sec_code):
         """
-        Request data from quik
+        Request candles and level2 data from quik
         """
         # Request quotes
         self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
@@ -176,7 +176,7 @@ class WebQuikConnector:
         """
         return "%s¦%s" % (t[0], t[1])
 
-    def _on_feed(self, data: dict):
+    def _on_candle(self, data: dict):
         """
         Ohlc data callback
         :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01

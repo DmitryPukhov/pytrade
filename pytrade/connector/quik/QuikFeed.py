@@ -1,5 +1,6 @@
 import logging
 from pytrade.connector.quik.WebQuikConnector import WebQuikConnector
+import numpy
 
 
 class QuikFeed:
@@ -8,7 +9,7 @@ class QuikFeed:
     Provides price and level2 data stream from quik for specific assets.
     """
     _logger = logging.getLogger(__name__)
-    feed_callbacks = set()
+    candle_callbacks = set()
     level2_callbacks = set()
     heartbeat_callbacks = set()
 
@@ -24,7 +25,7 @@ class QuikFeed:
         self.class_code = class_code
         self.sec_code = sec_code
         # Subscribe to data stream
-        self._quik.subscribe(self.class_code, self.sec_code, self.on_feed, self.on_level2)
+        self._quik.subscribe(self.class_code, self.sec_code, self.on_candle, self.on_level2)
 
     def start(self):
         """
@@ -36,11 +37,11 @@ class QuikFeed:
         if self._quik.status == WebQuikConnector.Status.DISCONNECTED:
             self._quik.run()
 
-    def on_feed(self, asset_class, asset_code, dt, o, h, l, c, v):
+    def on_candle(self, asset_class, asset_code, dt, o, h, l, c, v):
         """
         Price data
         """
-        for callback in self.feed_callbacks:
+        for callback in self.candle_callbacks:
             callback(asset_class, asset_code, dt, o, h, l, c, v)
 
     def on_level2(self, asset_class, asset_code, dt, level2):

@@ -1,6 +1,7 @@
 import logging
 from logging import handlers
 
+from pytrade.Feed2Csv import Feed2Csv
 from pytrade.Strategy import Strategy
 from pytrade.connector.quik.QuikFeed import QuikFeed
 from pytrade.Config import Config
@@ -24,9 +25,8 @@ class App:
         # Todo: support making orders
         # self._broker = QuikBroker(quik)
         self._broker = None
-        #self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
         self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
-        # feed2csv = Feed2Csv(self._feed, config.sec_class, config.sec_code)
+        self._feed2csv = Feed2Csv(self._feed, config.sec_class, config.sec_code)
 
     def main(self):
         """

@@ -6,8 +6,8 @@ class Config:
     # Web quik config
     server = 'junior.webquik.ru'
     conn = 'wss://' + server + ':443/quik'
-    account = 'U1234567'
-    passwd = '12345'
+    account = 'U0149094'
+    passwd = '02008'
 
     # Main asset
     sec_class = 'QJSIM'
