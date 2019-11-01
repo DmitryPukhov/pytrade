@@ -9,7 +9,7 @@ class Feed2Csv(BaseFeed):
     Receive ticks and level 2 and persist to csv
     """
     _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
+    _logger.setLevel(logging.INFO)
 
     def __init__(self, feed, sec_class, sec_code, data_dir='./data'):
         super().__init__(feed, sec_class, sec_code)
