@@ -1,5 +1,4 @@
 import logging
-
 from pytrade.feed.Feed2Csv import Feed2Csv
 from pytrade.Strategy import Strategy
 from pytrade.connector.quik.QuikFeed import QuikFeed
@@ -44,26 +43,6 @@ class App:
         # Todo: support making orders
         # self._broker.start()
 
-#
-# #
-# import pandas as pd
-# import numpy as np
-# #
-# df = pd.read_csv("./data/QJSIM_SBER_2019-10-31.csv", parse_dates=[0, 1])
-# df.columns = ['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume']
-# df.set_index(['datetime', 'ticker'], inplace=True)
 
-##  How to write
-#df.groupby([df.index.levels[0].dayofyear, df.index.levels[1]]).apply(lambda x: x.to_csv('average{}.csv'.format(x.name), index=False))
-#df.groupby([df.index.levels[0].dayofyear, df.index.levels[1]]).apply(lambda x: x.to_csv('average{}.csv'.format(x.name), index=False))
-
-# df.index.levels[0].dayofyear, df.index.levels[1]
-#
-#
-# days = np.unique(df.index.levels[0].dayofyear)
-# for day in days:
-#     df2 = df[df.index.levels[0].dayofyear == day]
-#     print(df2.head())
-#
 if __name__ == "__main__":
     App().main()
