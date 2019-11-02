@@ -5,6 +5,8 @@ from enum import Enum
 import websocket
 from websocket import WebSocketApp, ABNF
 
+from pytrade.feed.BaseFeed import BaseFeed
+
 
 class WebQuikConnector:
     """
@@ -43,9 +45,9 @@ class WebQuikConnector:
     _HEARTBEAT_SECONDS = 3
 
     _logger = logging.getLogger(__name__)
+    _logger.setLevel("INFO")
 
     def __init__(self, conn, account, passwd):
-        self._logger.setLevel("INFO")
         # Create websocket, not open and run here
         self._conn = conn
         self._ws: WebSocketApp = websocket.WebSocketApp(self._conn,
@@ -71,22 +73,23 @@ class WebQuikConnector:
 
         # Subscribers for data feed
         self._feed_subscribers = {}
-        self._level2_subscribers = {}
+        #        self._level2_subscribers = {}
 
         # Broker information subscribers
-        self.broker_subscribers = []
+        #        self.broker_subscribers = []
         # Heart beat support
-        self.heartbeat_subscribers = set()
+        #        self.heartbeat_subscribers = set()
         self._heartbeat_cnt = 0
 
-    def run(self):
+    def start(self):
         """
         Create web socket and run loop
         """
-        self.status = WebQuikConnector.Status.CONNECTING
-        self._logger.info("Connecting to " + self._conn)
-        # Run loopo
-        self._ws.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
+        if self.status == WebQuikConnector.Status.DISCONNECTED:
+            self.status = WebQuikConnector.Status.CONNECTING
+            self._logger.info("Connecting to " + self._conn)
+            # Run loopo
+            self._ws.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
 
     def _on_socket_open(self):
         """
@@ -151,14 +154,12 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        # self._logger.debug('Got msg %s', strmsg)
+        self._logger.debug('Got msg %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         callback = self._callbacks.get(msg['msgid'])
         if callback:
             callback(msg)
-
-        # Conversions of class, asset in data
 
     @staticmethod
     def _asset2tuple(s):
@@ -197,7 +198,7 @@ class WebQuikConnector:
                 c = ohlcv['c']
                 v = ohlcv['v']
                 # Send data to subscribers
-                self._feed_subscribers[(asset_class, asset_code)](asset_class, asset_code, dt, o, h, l_, c, v)
+                self._feed_subscribers[(asset_class, asset_code)].on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
 
     def _on_level2(self, data: dict):
         """
@@ -211,7 +212,7 @@ class WebQuikConnector:
         # Go through all assets in level2 message
         for asset_str in data['quotes']:
             asset_class, asset_code = self._asset2tuple(asset_str)
-            if self._level2_subscribers[(asset_class, asset_code)] is not None:
+            if self._feed_subscribers[(asset_class, asset_code)] is not None:
                 # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
                 level2_quik: dict = data['quotes'][asset_str]['lines']
                 level2 = {}
@@ -226,7 +227,8 @@ class WebQuikConnector:
                     level2[price] = (bid, ask)
 
                     # If somebody subscribed to level2 of this asset, send her this data.
-                self._level2_subscribers[(asset_class, asset_code)](asset_class, asset_code, datetime.now(), level2)
+                self._feed_subscribers[(asset_class, asset_code)].on_level2(asset_class, asset_code, datetime.now(),
+                                                                            level2)
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
@@ -245,25 +247,26 @@ class WebQuikConnector:
         self.status = WebQuikConnector.Status.DISCONNECTED
         self._logger.info('Disconnected')
 
-    def subscribe(self, class_code, sec_code, feed_callback, level2_callback):
+    def subscribe(self, class_code, sec_code, subscriber: BaseFeed):
         """
         Subscribe to data for given security
         :param class_code security class, example 'SPBFUT'
         :param sec_code code of security, example 'RIU8'
-        :param feed_callback callback function to pass price/volume into
-        :param level2_callback callback function to pass level2 into
+        :param subscriber subscriber class, inherited from base feed
         """
-        # Register given feed callback
-        self._feed_subscribers[(class_code, sec_code)] = feed_callback
+        key = (class_code, sec_code)
 
         # Register given feed callback
-        self._level2_subscribers[(class_code, sec_code)] = level2_callback
+        self._feed_subscribers[key] = subscriber
 
         # Request this feed from server
         if self.status == WebQuikConnector.Status.CONNECTED:
             self._request_feed(class_code, sec_code)
 
     def _on_heartbeat(self, *args):
-        for callback in self.heartbeat_subscribers:
-            callback()
+        """
+        Pass heart beat event to subscribers
+        """
+        for subscriber in self._feed_subscribers.values():
+            subscriber.on_heartbeat()
         self._heartbeat_cnt += 1

@@ -111,7 +111,7 @@ cerebro.addanalyzer(bt.analyzers.PyFolio)
 
 # Print out the starting conditions
 print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-results = cerebro.run()
+results = cerebro.start()
 result = results[0]
 pyfoliozer = result.analyzers.getbyname('pyfolio')
 returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()

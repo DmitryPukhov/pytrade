@@ -1,6 +1,7 @@
 import logging
 import pandas as pd
 import datetime as dt
+
 pd.options.display.width = 0
 
 
@@ -17,12 +18,8 @@ class BaseFeed:
         self.sec_code = sec_code
 
         # Connecting to feed
-        self._feed.level2_callbacks.add(self.on_level2)
-        self._feed.candle_callbacks.add(self.on_candle)
-        self._feed.heartbeat_callbacks.add(self.on_heartbeat)
-        self._heart_beating = False
-        self._flag = False
-        self._last_tick_time = self._last_heartbeat = dt.datetime.min
+        self._feed.subscribe(sec_class, sec_code, self)
+        self.last_tick_time = self.last_heartbeat = dt.datetime.min
 
         # Main data with price etc.
         self.candles: pd.DataFrame = pd.DataFrame(
@@ -41,21 +38,25 @@ class BaseFeed:
         """
         # Add ohlc to data
         ticker = self._ticker_of(asset_class, asset_code)
-        self.candles.at[(pd.to_datetime(datetime), ticker), ['open', 'high', 'low', 'close', 'volume']] = [o, h, l, c, v]
+        self.candles.at[(pd.to_datetime(datetime), ticker),
+                        ['open', 'high', 'low', 'close', 'volume']] = [o, h, l, c, v]
         self._logger.debug("Received feed for time=%s, ticker: %s, data:%s", datetime, ticker, [o, h, l, c, v])
-        self._last_tick_time = datetime
+        self.last_tick_time = dt.datetime.now()
 
     def on_level2(self, asset_class, asset_code, datetime, level2: dict):
+        """
+        New level2 data received
+        """
         self._logger.debug("Received level2 for time = %s. %s/%s. Data: %s", datetime, asset_class, asset_code, level2)
         ticker = self._ticker_of(asset_class, asset_code)
         for price in level2.keys():
             bid_vol = level2[price][0]
             ask_vol = level2[price][1]
             self.level2.at[(pd.to_datetime(datetime), ticker, price), ['bid_vol', 'ask_vol']] = [bid_vol, ask_vol]
-            self._last_tick_time = datetime
+            self.last_tick_time = dt.datetime.now()
 
     def on_heartbeat(self):
         """
         Heartbeat received
         """
-        self._last_heartbeat = dt.datetime.now()
+        self.last_heartbeat = dt.datetime.now()

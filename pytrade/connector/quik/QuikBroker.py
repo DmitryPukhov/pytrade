@@ -1,4 +1,3 @@
-from pytrade.connector.quik.QuikConnector import QuikConnector
 import logging
 
 
@@ -18,8 +17,7 @@ class QuikBroker:
         Starting QuikConnector loop if not done yet
         """
         self._logger.info("Starting quik broker")
-        if self._quik.status == QuikConnector.Status.DISCONNECTED:
-            self._quik.run()
+        self._quik.start()
 
     def buy(self, class_code, sec_code, price, quantity):
         """
