@@ -32,6 +32,15 @@ class BaseFeed:
     def _ticker_of(asset_class, asset_code):
         return asset_class + '/' + asset_code
 
+    def on_quote(self, asset_class, asset_code, datetime, bid, ask, last):
+        """
+        New bid/ask received
+        """
+        self.last_tick_time = dt.datetime.now()
+        ticker = self._ticker_of(asset_class, asset_code)
+        self._logger.debug("Received quote, time=%s, ticker: %s, bid:%s, ask:%s, last:%s",
+                           datetime, ticker, bid, ask, last)
+
     def on_candle(self, asset_class, asset_code, datetime, o, h, l, c, v):
         """
         New ohlc data received
@@ -40,7 +49,7 @@ class BaseFeed:
         ticker = self._ticker_of(asset_class, asset_code)
         self.candles.at[(pd.to_datetime(datetime), ticker),
                         ['open', 'high', 'low', 'close', 'volume']] = [o, h, l, c, v]
-        self._logger.debug("Received feed for time=%s, ticker: %s, data:%s", datetime, ticker, [o, h, l, c, v])
+        self._logger.debug("Received candle, time=%s, ticker: %s, data:%s", datetime, ticker, [o, h, l, c, v])
         self.last_tick_time = dt.datetime.now()
 
     def on_level2(self, asset_class, asset_code, datetime, level2: dict):

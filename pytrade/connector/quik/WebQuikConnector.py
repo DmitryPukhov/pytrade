@@ -39,13 +39,13 @@ class WebQuikConnector:
     _MSG_ID_EXIT = 10006
     _MSG_ID_CREATE_DATASOURCE = 11016
     _MSG_ID_CREATE_LEVEL2_DATASOURCE = 11014
-    _MSG_ID_DATA = 21011
+    _MSG_ID_QUOTES = 21011
     _MSG_ID_GRAPH = 21016
     _MSG_ID_LEVEL2 = 21014
     _HEARTBEAT_SECONDS = 3
 
     _logger = logging.getLogger(__name__)
-    _logger.setLevel("INFO")
+    _logger.setLevel("DEBUG")
 
     def __init__(self, conn, account, passwd):
         # Create websocket, not open and run here
@@ -66,7 +66,7 @@ class WebQuikConnector:
         # Socket callback self._on_message will call these
         self._callbacks = {self._MSG_ID_AUTH: self._on_auth,
                            self._MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
-                           # self._MSG_ID_DATA: self._on_data,
+                           self._MSG_ID_QUOTES: self._on_quotes,
                            self._MSG_ID_GRAPH: self._on_candle,
                            self._MSG_ID_LEVEL2: self._on_level2
                            }
@@ -177,6 +177,22 @@ class WebQuikConnector:
         """
         return "%s¦%s" % (t[0], t[1])
 
+    def _on_quotes(self, data: dict):
+        """
+        Bid/ask spreads callback
+        Msg sample: {"msgid":21011,"dataResult":{"CETS\u00A6BYNRUBTODTOM":{"bid":0, "ask":10, last":0,"lastchange":...
+        """
+        self._logger.debug('Got bid/ask: %s', data)
+        for asset_str in data['dataResult'].keys():
+            (asset_class, asset_code) = self._asset2tuple(asset_str)
+            if (asset_class, asset_code) in self._feed_subscribers.keys():
+                bid = data['dataResult'][asset_str]['bid']
+                ask = data['dataResult'][asset_str]['offer']
+                last = data['dataResult'][asset_str].get('last')
+                # Send to subscriber
+                self._feed_subscribers[(asset_class, asset_code)] \
+                    .on_quote(asset_class, asset_code, datetime.now(), bid, ask, last)
+
     def _on_candle(self, data: dict):
         """
         Ohlc data callback
@@ -185,20 +201,23 @@ class WebQuikConnector:
         """
         self._logger.debug('Got feed: %s', data)
 
+        # Todo: get rid of nested check
         for asset_str in data['graph'].keys():
             # Each asset in data['graph']
             (asset_class, asset_code) = self._asset2tuple(asset_str)
-            asset_data = data['graph'][asset_str]
-            for ohlcv in asset_data:
-                # Each ohlcv for this asset
-                dt = datetime.fromisoformat(ohlcv['d'])
-                o = ohlcv['o']
-                h = ohlcv['h']
-                l_ = ohlcv['l']
-                c = ohlcv['c']
-                v = ohlcv['v']
-                # Send data to subscribers
-                self._feed_subscribers[(asset_class, asset_code)].on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
+            if self._feed_subscribers[(asset_class, asset_code)] is not None:
+                asset_data = data['graph'][asset_str]
+                for ohlcv in asset_data:
+                    # Each ohlcv for this asset
+                    dt = datetime.fromisoformat(ohlcv['d'])
+                    o = ohlcv['o']
+                    h = ohlcv['h']
+                    l_ = ohlcv['l']
+                    c = ohlcv['c']
+                    v = ohlcv['v']
+                    # Send data to subscribers
+                    self._feed_subscribers[(asset_class, asset_code)].on_candle(asset_class, asset_code, dt, o, h, l_,
+                                                                                c, v)
 
     def _on_level2(self, data: dict):
         """
@@ -210,6 +229,7 @@ class WebQuikConnector:
         # '22886': {'b': 138, 's': 0, 'by': 0, 'sy': 0}, '22895': {'b': 1, 's': 0, 'by': 0, 'sy': 0},...
 
         # Go through all assets in level2 message
+        # Todo: get rid of nested check
         for asset_str in data['quotes']:
             asset_class, asset_code = self._asset2tuple(asset_str)
             if self._feed_subscribers[(asset_class, asset_code)] is not None:
