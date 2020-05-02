@@ -18,7 +18,7 @@ class BaseFeed:
         self.sec_code = sec_code
 
         # Connecting to feed
-        self._feed.subscribe(sec_class, sec_code, self)
+        self._feed.subscribe_feed(sec_class, sec_code, self)
         self.last_tick_time = self.last_heartbeat = dt.datetime.min
 
         # Main data with price etc.
