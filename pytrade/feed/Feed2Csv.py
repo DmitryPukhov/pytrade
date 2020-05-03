@@ -12,13 +12,14 @@ class Feed2Csv(BaseFeed):
     Receive ticks and level 2 and persist to csv
     """
     _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.INFO)
+    _logger.setLevel(logging.DEBUG)
 
     def __init__(self, feed, sec_class, sec_code, data_dir='./data'):
         super().__init__(feed, sec_class, sec_code)
 
+
         # Dump each minute
-        self._write_interval = dt.timedelta(minutes=1)
+        self._write_interval = dt.timedelta(seconds=10)
         self._data_dir = data_dir
         self._logger.info("Candles and level2 will be persisted each %s to %s", self._write_interval, self._data_dir)
         self._last_write_time = dt.datetime.min
@@ -56,6 +57,8 @@ class Feed2Csv(BaseFeed):
         if (dt.datetime.now() - self._last_write_time) > self._write_interval:
             self.write(self.candles, 'candles')
             self.write(self.level2, 'level2')
+
+            self._last_write_time = dt.datetime.now()
 
         # Store current time as last heart beat
         super().on_heartbeat()

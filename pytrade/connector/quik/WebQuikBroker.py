@@ -2,23 +2,30 @@ import logging
 
 from connector.quik.WebQuikConnector import WebQuikConnector
 
-
-class QuikBroker:
+class WebQuikBroker:
     """
     Broker facade for QuikConnector. Orders, account info etc.
     """
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, quik:WebQuikConnector):
-        self._quik = quik
-        self._quik.subscribe_broker(self)
+    def __init__(self, connector: WebQuikConnector):
+        self._connector = connector
+        self._connector.broker = self
+        self._callbacks = {}
+        self._broker_subscribers = {}
 
-    def start(self):
+    def subscribe_broker(self, subscriber):
         """
-        Starting QuikConnector loop if not done yet
+        Subscribe to broker events - trades, account etc.
+        :param subscriber broker class, inherited from broker'
         """
-        self._logger.info("Starting quik broker")
-        self._quik.start()
+        # Register given feed callback
+        self._broker_subscribers.add(subscriber)
+
+    def on_message(self, msg):
+        callback = self._callbacks.get(msg['msgid'])
+        if callback:
+            callback(msg)
 
     def buy(self, class_code, sec_code, price, quantity):
         """
@@ -47,5 +54,6 @@ class QuikBroker:
     def on_heartbeat(self):
         """
         Heartbeating reaction
-        :return:
         """
+        for subscriber in self._broker_subscribers:
+            subscriber.on_heartbeat()

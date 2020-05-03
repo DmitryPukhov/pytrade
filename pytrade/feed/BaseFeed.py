@@ -7,18 +7,18 @@ pd.options.display.width = 0
 
 class BaseFeed:
     """
-    Base class for any feed
+    Base class for any feed. Keeps quotes and level2 in pandas dataframes.
     """
     _logger = logging.getLogger(__name__)
     _logger.setLevel(logging.INFO)
 
     def __init__(self, feed, sec_class, sec_code):
+        # Connecting to feed
         self._feed = feed
         self.sec_class = sec_class
         self.sec_code = sec_code
+        self._feed.subscribe_feed(self.sec_class, self.sec_code, self)
 
-        # Connecting to feed
-        self._feed.subscribe_feed(sec_class, sec_code, self)
         self.last_tick_time = self.last_heartbeat = dt.datetime.min
 
         # Main data with price etc.

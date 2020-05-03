@@ -29,36 +29,28 @@ class WebQuikConnector:
     _logger.setLevel(logging.DEBUG)
 
     def __init__(self, conn, account, passwd):
-        # Create websocket, not open and run here
+        # Create websocket, do not open and run here
         self._conn = conn
-        self._ws: WebSocketApp = websocket.WebSocketApp(self._conn,
-                                                        on_message=self._on_message,
-                                                        on_error=self._on_error,
-                                                        on_close=self._on_close,
-                                                        on_pong=self._on_heartbeat)
-        self._ws.on_open = self._on_socket_open
-
+        self.websocket_app: WebSocketApp = websocket.WebSocketApp(self._conn,
+                                                                  on_message=self._on_message,
+                                                                  on_error=self._on_error,
+                                                                  on_close=self._on_close,
+                                                                  on_pong=self._on_heartbeat)
+        self.websocket_app.on_open = self._on_socket_open
         self._passwd = passwd
         self._account = account
-        self._last_trans_id = 0
         self.status = self.Status.DISCONNECTED
 
         # Callbacks for different messages msgid
         # Socket callback self._on_message will call these
         self._callbacks = {MsgId.MSG_ID_AUTH: self._on_auth,
-                           MsgId.MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open,
-                           MsgId.MSG_ID_QUOTES: self._on_quotes,
-                           MsgId.MSG_ID_GRAPH: self._on_candle,
-                           MsgId.MSG_ID_LEVEL2: self._on_level2
+                           MsgId.MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open
                            }
 
-        # Subscribers for data feed
-        self._feed_subscribers = {}
-
-        # Broker messages subscribers
-        self._broker_subscribers = set()
         # Heart beat support
         self._heartbeat_cnt = 0
+        self.feed = None
+        self.broker = None
 
     def start(self):
         """
@@ -68,7 +60,7 @@ class WebQuikConnector:
             self.status = WebQuikConnector.Status.CONNECTING
             self._logger.info("Connecting to " + self._conn)
             # Run loop
-            self._ws.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
+            self.websocket_app.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
 
     def _on_socket_open(self):
         """
@@ -79,7 +71,7 @@ class WebQuikConnector:
                    + '","width":"200","height":"200","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' \
                      '(KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36","lang":"ru",' \
                      '"sid":"144f9.2b851e74","version":"6.6.1"} '
-        self._ws.send(auth_msg)
+        self.websocket_app.send(auth_msg)
 
     def _on_trade_session_open(self, msg):
         """
@@ -89,9 +81,10 @@ class WebQuikConnector:
             self._logger.info('Authenticated')
             self.status = WebQuikConnector.Status.CONNECTED
             self._logger.info('Connected. Trade session is opened')
-            # Request feeds for subscribers from server
-            for (class_code, sec_code), value in self._feed_subscribers.items():
-                self._request_feed(class_code, sec_code)
+            if self.feed is not None:
+                self.feed.on_trade_session_open(msg)
+            if self.broker is not None:
+                self.broker.on_trade_session_open(msg)
         else:
             # Not opened, failure failed
             self.status = WebQuikConnector.Status.DISCONNECTED
@@ -110,24 +103,6 @@ class WebQuikConnector:
             self.close()
             raise ConnectionError('Authentication failure: %s' % msg)
 
-    def _request_feed(self, class_code, sec_code):
-        """
-        Request candles and level2 data from quik
-        """
-        # Request quotes
-        self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
-        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (MsgId.MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 0)
-        msg = msg.encode()
-        self._logger.debug('Sending msg: %s' % msg)
-        self._ws.send(msg)
-        # Request level2 data
-        self._logger.info('Requesting level2 data for %s\\%s', class_code, sec_code)
-        depth = 30
-        msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
-              (MsgId.MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, depth)
-        self._logger.debug('Sending msg: %s' % msg)
-        self._ws.send(msg, opcode=ABNF.OPCODE_BINARY)
-
     def _on_message(self, raw_msg):
         """
         Entry for message processing. Call specific processors for different messages.
@@ -136,12 +111,21 @@ class WebQuikConnector:
         self._logger.debug('Got msg %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
-        callback = self._callbacks.get(msg['msgid'])
+        msgid = msg['msgid']
+        callback = self._callbacks.get(msgid)
+        # Pass message along pipeline
         if callback:
+            # Don't send msg to consumers, process it in this class
             callback(msg)
+        elif msgid // 1000 == 21 and self.feed is not None:
+            # Send to feed
+            self.feed.on_message(msg)
+        elif msgid // 1000 == 22 and self.broker is not None:
+            # Send to broker
+            self.broker.on_message(msg)
 
     @staticmethod
-    def _asset2tuple(s):
+    def asset2tuple(s):
         """
         Converts quik asset string to tuple(class, code)
         """
@@ -150,84 +134,11 @@ class WebQuikConnector:
         return tuple([parts[0], parts[1]])
 
     @staticmethod
-    def _tuple2asset(t: tuple):
+    def tuple2asset(t: tuple):
         """
         Converts asset tuple(class, code) to quik compatible string class¦code
         """
         return "%s¦%s" % (t[0], t[1])
-
-    def _on_quotes(self, data: dict):
-        """
-        Bid/ask spreads callback
-        Msg sample: {"msgid":21011,"dataResult":{"CETS\u00A6BYNRUBTODTOM":{"bid":0, "ask":10, last":0,"lastchange":...
-        """
-        self._logger.debug('Got bid/ask: %s', data)
-        for asset_str in data['dataResult'].keys():
-            (asset_class, asset_code) = self._asset2tuple(asset_str)
-            if (asset_class, asset_code) in self._feed_subscribers.keys():
-                bid = data['dataResult'][asset_str]['bid']
-                ask = data['dataResult'][asset_str]['offer']
-                last = data['dataResult'][asset_str].get('last')
-                # Send to subscriber
-                self._feed_subscribers[(asset_class, asset_code)] \
-                    .on_quote(asset_class, asset_code, datetime.now(), bid, ask, last)
-
-    def _on_candle(self, data: dict):
-        """
-        Ohlc data callback
-        :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01
-        10:02:00","o":22649,"c":22647,"h":22649,"l":22646,"v":1889}]}} :return:
-        """
-        self._logger.debug('Got feed: %s', data)
-
-        # Todo: get rid of nested check
-        for asset_str in data['graph'].keys():
-            # Each asset in data['graph']
-            (asset_class, asset_code) = self._asset2tuple(asset_str)
-            if self._feed_subscribers[(asset_class, asset_code)] is not None:
-                asset_data = data['graph'][asset_str]
-                for ohlcv in asset_data:
-                    # Each ohlcv for this asset
-                    dt = datetime.fromisoformat(ohlcv['d'])
-                    o = ohlcv['o']
-                    h = ohlcv['h']
-                    l_ = ohlcv['l']
-                    c = ohlcv['c']
-                    v = ohlcv['v']
-                    # Send data to subscribers
-                    self._feed_subscribers[(asset_class, asset_code)].on_candle(asset_class, asset_code, dt, o, h, l_,
-                                                                                c, v)
-
-    def _on_level2(self, data: dict):
-        """
-        Level 2 data handler. Quik sends us full level2 snapshot.
-        """
-        # Sample of level2. {'msgid': 21014, 'quotes': {'QJSIM¦SBER': {'lines': {'22806':
-        # {'b': 234, 's': 0, 'by': 0, 'sy': 0}, '22841': {'b': 437, 's': 0, 'by': 0, 'sy': 0},
-        # '22853': {'b': 60, 's': 0, 'by': 0, 'sy': 0}, '22878': {'b': 82, 's': 0, 'by': 0, 'sy': 0},
-        # '22886': {'b': 138, 's': 0, 'by': 0, 'sy': 0}, '22895': {'b': 1, 's': 0, 'by': 0, 'sy': 0},...
-
-        # Go through all assets in level2 message
-        # Todo: get rid of nested check
-        for asset_str in data['quotes']:
-            asset_class, asset_code = self._asset2tuple(asset_str)
-            if self._feed_subscribers[(asset_class, asset_code)] is not None:
-                # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
-                level2_quik: dict = data['quotes'][asset_str]['lines']
-                level2 = {}
-                for key in level2_quik.keys():
-                    price = int(key)
-                    bid = level2_quik[key]['b']
-                    if bid == 0:
-                        bid = None
-                    ask = level2_quik[key]['s']
-                    if ask == 0:
-                        ask = None
-                    level2[price] = (bid, ask)
-
-                    # If somebody subscribed to level2 of this asset, send her this data.
-                self._feed_subscribers[(asset_class, asset_code)].on_level2(asset_class, asset_code, datetime.now(),
-                                                                            level2)
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s', error)
@@ -239,41 +150,19 @@ class WebQuikConnector:
         if self.status != WebQuikConnector.Status.DISCONNECTING and self.Status != WebQuikConnector.Status.DISCONNECTED:
             self._logger.info("Disconnecting")
             self.status = WebQuikConnector.Status.DISCONNECTING
-            self._ws.send('{"msgid":11016}')
-            self._ws.close()
+            self.websocket_app.send('{"msgid":11016}')
+            self.websocket_app.close()
 
     def _on_close(self):
         self.status = WebQuikConnector.Status.DISCONNECTED
         self._logger.info('Disconnected')
 
-    def subscribe_feed(self, class_code, sec_code, subscriber):
-        """
-        Add subsciber for feed data
-        :param class_code security class, example 'SPBFUT'
-        :param sec_code code of security, example 'RIU8'
-        :param subscriber subscriber class, inherited from base feed
-        """
-        key = (class_code, sec_code)
-
-        # Register given feed callback
-        self._feed_subscribers[key] = subscriber
-
-        # Request this feed from server
-        if self.status == WebQuikConnector.Status.CONNECTED:
-            self._request_feed(class_code, sec_code)
-
-    def subscribe_broker(self, subscriber):
-        """
-        Subscribe to broker events - trades, account etc.
-        :param subscriber broker class, inherited from broker'
-        """
-        # Register given feed callback
-        self._broker_subscribers.add(subscriber)
-
     def _on_heartbeat(self, *args):
         """
         Pass heart beat event to subscribers
         """
-        for subscriber in self._feed_subscribers.values():
-            subscriber.on_heartbeat()
         self._heartbeat_cnt += 1
+        if self.feed is not None:
+            self.feed.on_heartbeat()
+        if self.broker is not None:
+            self.broker.on_heartbeat()

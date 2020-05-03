@@ -1,7 +1,8 @@
 import logging
 
-from broker.BaseBroker import QuikBroker
+from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
+from connector.quik.WebQuikFeed import WebQuikFeed
 from pytrade.feed.Feed2Csv import Feed2Csv
 from pytrade.Strategy import Strategy
 from pytrade.Config import Config
@@ -11,15 +12,18 @@ class App:
     """
     Main application. Build strategy and run.
     """
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.INFO)
+    # _logger = logging.getLogger(__name__)
+    # _logger.setLevel(logging.INFO)
 
     def __init__(self):
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.setLevel(logging.INFO)
         self._logger.info("Initializing the App")
         config = Config
         self._connector = WebQuikConnector(conn=config.conn, passwd=Config.passwd, account=config.account)
-        self._feed = Feed2Csv(self._connector, config.sec_class, config.sec_code)
-        self._broker = QuikBroker(self._connector)
+        web_quik_feed = WebQuikFeed(self._connector)
+        self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
+        self._broker = WebQuikBroker(self._connector)
 
         # Create feed, subscribe events
         # Todo: support making orders
