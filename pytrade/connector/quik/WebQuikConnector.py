@@ -113,8 +113,15 @@ class WebQuikConnector:
         # Find and execute callback function for this message
         msgid = msg['msgid']
         callback = self._callbacks.get(msgid)
+        if msgid == 20001:
+            pin_code = input("Enter sms pin code: ")
+            pin_msg = '{"msgid":10001,"pin":"%s"}' % pin_code
+            self.websocket_app.send(pin_msg) 
+        elif msgid == 20008:
+            connected_msg = '{"msgid":10008}'
+            self.websocket_app.send(connected_msg)
         # Pass message along pipeline
-        if callback:
+        elif callback:
             # Don't send msg to consumers, process it in this class
             callback(msg)
         elif msgid // 1000 == 21 and self.feed is not None:
