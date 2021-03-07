@@ -12,29 +12,33 @@ class MsgId:
     # вал.парам",21024:"Список вал.пар",22000:"Ответ по заявке",22001:"Ответ по стоп-заявке",22002:"Ответ по
     # связ.стоп-заявке",22003:"Ответ по услов.стоп-заявке",22004:"Ответ по FX-заявке",22100:"Ответ по снятию заявки",
     # 22101:"Ответ по снятию стоп-заявки"},
-    MSG_ID_AUTH = 20006
-    MSG_ID_TRADE_SESSION_OPEN = 20000
-    MSG_ID_EXIT = 10006
-    MSG_ID_CREATE_DATASOURCE = 11016
-    MSG_ID_CREATE_LEVEL2_DATASOURCE = 11014
-    MSG_ID_QUOTES = 21011
-    MSG_ID_GRAPH = 21016
-    MSG_ID_LEVEL2 = 21014
+    PIN_REQ = 20001
+    AUTH = 20006
+    STATUS = 20008
+    TRADE_SESSION_OPEN = 20000
+    EXIT = 10006
+    CREATE_DATASOURCE = 11016
+    CREATE_LEVEL2_DATASOURCE = 11014
+    QUOTES = 21011
+    GRAPH = 21016
+    LEVEL2 = 21014 # 21014:"Стаканы"
 
     # Broker messages ???
-    MSG_ID_ORDERS = 21001  # 21001:"Заявки",
-    MSG_ID_TRADES = 21003  # 21003:"Сделки",
-    MSG_ID_LIMITS = 21004  # 21004:"Денежн.лимиты"
-    MSG_ID_STOCK_LIMITS = 21005  # 21005:"Бумаж.лимиты",
-    MSG_ID_POSITIONS = 21007  # 21007:"Позиции"
-    MSG_ID_TRANS_REPLY = 21009  # 21009:"Ответы на транзакции"
-    MSG_ID_BUYSELL = 21012  #:"Купить/Продать",
-    MSG_ID_PORTFOLIO = 21013  # 21013:"Портфель",
+    ORDERS = 21001  # 21001:"Заявки",
+    TRADES = 21003  # 21003:"Сделки",
+    MONEY_LIMITS = 21004  # 21004:"Денежн.лимиты"
+    STOCK_LIMITS = 21005  # 21005:"Бумаж.лимиты",
+    POSITIONS = 21007  # 21007:"Позиции"
+    TRANS_REPLY = 21009  # 21009:"Ответы на транзакции"
+    BUYSELL = 21012  #:"Купить/Продать",
+    PORTFOLIO = 21013  # 21013:"Портфель",
+    TRADE_ACCOUNTS = 21022 # 21022:"Торговые счета",
+    TRADES_FX = 21023 # 21023:"Торги по  # вал.парам"
     #MSG_ID_LEVEL2 = 21014,  # 21014:"Стаканы"
-    MSG_ID_ORDER_ANSWER = 22000  # 22000:"Ответ по заявке"
-    MSG_ID_STOP_ORDER_ANSWER = 22001  # 22001:"Ответ по стоп-заявке"
-    MSG_ID_LINKED_STOP_ORDER_ANSWER = 22002  # 22002:"Ответ по связ.стоп-заявке"
-    MSG_ID_CONDITIONAL_STOP_ORDER_ANSWER = 22003  # 22003:"Ответ по услов.стоп-заявке"
-    MSG_ID_FX_ORDER_ANSWER = 22004  # ,22004:"Ответ по FX-заявке",
-    MSG_ID_REMOVE_ORDER_ANSWER = 22100  # 22100:"Ответ по снятию заявки",
-    MSG_ID_REMOVE_STOP_ORDER_ANSWER = 22101  # 22101:"Ответ по снятию стоп-заявки"
+    ORDER_ANSWER = 22000  # 22000:"Ответ по заявке"
+    STOP_ORDER_ANSWER = 22001  # 22001:"Ответ по стоп-заявке"
+    LINKED_STOP_ORDER_ANSWER = 22002  # 22002:"Ответ по связ.стоп-заявке"
+    CONDITIONAL_STOP_ORDER_ANSWER = 22003  # 22003:"Ответ по услов.стоп-заявке"
+    FX_ORDER_ANSWER = 22004  # ,22004:"Ответ по FX-заявке",
+    REMOVE_ORDER_ANSWER = 22100  # 22100:"Ответ по снятию заявки",
+    REMOVE_STOP_ORDER_ANSWER = 22101  # 22101:"Ответ по снятию стоп-заявки"

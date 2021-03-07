@@ -3,6 +3,7 @@ import logging
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.MsgId import MsgId
 
+
 class WebQuikBroker:
     """
     Broker facade for QuikConnector. Orders, account info etc.
@@ -11,16 +12,38 @@ class WebQuikBroker:
     _logger.setLevel(logging.DEBUG)
 
     def __init__(self, connector: WebQuikConnector):
+        # 21001:"Заявки",
+        # 21003:"Сделки",
+        # 21004:"Денежн.лимиты"
+        # 21005:"Бумаж.лимиты",
+        self.callbacks = {
+            MsgId.ORDERS: self.on_orders,
+            MsgId.TRADES: self.on_trades,
+            MsgId.TRADE_ACCOUNTS:  self.on_trade_accounts,
+            MsgId.TRADES_FX:  self.on_trades_fx,
+            MsgId.MONEY_LIMITS: self.on_money_limits,
+            MsgId.STOCK_LIMITS: self.on_stock_limits}
         self._connector = connector
-        self._connector.broker = self
+        self._connector.subscribe(self.callbacks)
         self._broker_subscribers = {}
 
-    def on_trade_session_open(self, msg):
-        self._logger.info("Broker trade session opened. msg_id = %s", msg['msgid'])
-        ##msg = '{"msgid": %s}' % (11004)
-        ##self._connector.send(msg)
-        # self._logger.info('Requesting account  for %s\\%s', class_code, sec_code)
-        # msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (MsgId.MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 0)
+    def on_trades_fx(self, msg):
+        self._logger.info(f"On trades fx. msg={msg}")
+
+    def on_trade_accounts(self, msg):
+        self._logger.info(f"On trade accounts. msg={msg}")
+
+    def on_orders(self, msg):
+        self._logger.info(f"On orders. msg={msg}")
+
+    def on_trades(self, msg):
+        self._logger.info(f"On trades. msg={msg}")
+
+    def on_money_limits(self, msg):
+        self._logger.info(f"On money limits. msg={msg}")
+
+    def on_stock_limits(self, msg):
+        self._logger.info(f"On stock limits. msg={msg}")
 
     def subscribe_broker(self, subscriber):
         """
@@ -30,39 +53,27 @@ class WebQuikBroker:
         # Register given feed callback
         self._broker_subscribers.add(subscriber)
 
-    def on_message(self, msg):
-        self._logger.debug("Got message: %s", msg)
-        # callback = self._callbacks.get(msg['msgid'])
-        # if callback:
-        #     callback(msg)
-
     def buy(self, class_code, sec_code, price, quantity):
         """
         Send buy order to broker
         """
         raise NotImplementedError
-        #self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='B', price=price, quantity=quantity)
+        # self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='B', price=price, quantity=quantity)
 
     def sell(self, class_code, sec_code, price, quantity):
         """
         Send sell order to broker
         """
         raise NotImplementedError
-        #var g={ccode:f.ccode,scode:d.down("#symbol").getScode(),secType:f.secType,account:d.down("#account").getValue(),clientCode:c,settleDate:d.down("#settleDate").getNoDelimValue(),buySell:e?"B":"S",price:a==="M"?0:d.down("#rate").getValue(),qty:toNumVolume(d.down("#amount").getValue()),slippage:b?b:0,limitMarket:a,execution:d.down("#execution").getValue(),comment:c+"/"+d.down("#comment").getValue(),currency:f.currency};
-        #self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='S', price=price, quantity=quantity)
+        # var g={ccode:f.ccode,scode:d.down("#symbol").getScode(),secType:f.secType,account:d.down("#account").getValue(),clientCode:c,settleDate:d.down("#settleDate").getNoDelimValue(),buySell:e?"B":"S",price:a==="M"?0:d.down("#rate").getValue(),qty:toNumVolume(d.down("#amount").getValue()),slippage:b?b:0,limitMarket:a,execution:d.down("#execution").getValue(),comment:c+"/"+d.down("#comment").getValue(),currency:f.currency};
+        # self._quik.send_order(class_code=class_code, sec_code=sec_code, operation='S', price=price, quantity=quantity)
 
     def kill_all_orders(self):
         """
         Kill all orders in trade system
         """
         raise NotImplementedError
-        #self._quik.kill_all_orders('SPBFUT', 'RIU8')
-
-    def on_account_info(self):
-        """
-        Account information changed callback
-        """
-        self._logger.info("Account info received")
+        # self._quik.kill_all_orders('SPBFUT', 'RIU8')
 
     def on_heartbeat(self):
         """
