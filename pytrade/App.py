@@ -26,7 +26,7 @@ class App:
 
         # Feed2Csv just receive price and level2 for single configured asset and write to data folder
         web_quik_feed = WebQuikFeed(self._connector)
-        self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
+        #self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
 
         # Broker is not implemented, just a stub.
         self._broker = WebQuikBroker(self._connector)

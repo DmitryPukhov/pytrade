@@ -19,10 +19,11 @@ class WebQuikBroker:
         self.callbacks = {
             MsgId.ORDERS: self.on_orders,
             MsgId.TRADES: self.on_trades,
-            MsgId.TRADE_ACCOUNTS:  self.on_trade_accounts,
-            MsgId.TRADES_FX:  self.on_trades_fx,
+            MsgId.TRADE_ACCOUNTS: self.on_trade_accounts,
+            MsgId.TRADES_FX: self.on_trades_fx,
             MsgId.MONEY_LIMITS: self.on_money_limits,
-            MsgId.STOCK_LIMITS: self.on_stock_limits}
+            MsgId.STOCK_LIMITS: self.on_stock_limits,
+            MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received}
         self._connector = connector
         self._connector.subscribe(self.callbacks)
         self._broker_subscribers = {}
@@ -44,6 +45,9 @@ class WebQuikBroker:
 
     def on_stock_limits(self, msg):
         self._logger.info(f"On stock limits. msg={msg}")
+
+    def on_limit_received(self, msg):
+        self._logger.info(f"Limit has received. msg={msg}")
 
     def subscribe_broker(self, subscriber):
         """

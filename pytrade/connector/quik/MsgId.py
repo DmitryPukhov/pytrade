@@ -21,7 +21,7 @@ class MsgId:
     CREATE_LEVEL2_DATASOURCE = 11014
     QUOTES = 21011
     GRAPH = 21016
-    LEVEL2 = 21014 # 21014:"Стаканы"
+    LEVEL2 = 21014  # 21014:"Стаканы"
 
     # Broker messages ???
     ORDERS = 21001  # 21001:"Заявки",
@@ -32,9 +32,10 @@ class MsgId:
     TRANS_REPLY = 21009  # 21009:"Ответы на транзакции"
     BUYSELL = 21012  #:"Купить/Продать",
     PORTFOLIO = 21013  # 21013:"Портфель",
-    TRADE_ACCOUNTS = 21022 # 21022:"Торговые счета",
-    TRADES_FX = 21023 # 21023:"Торги по  # вал.парам"
-    #MSG_ID_LEVEL2 = 21014,  # 21014:"Стаканы"
+    TRADE_ACCOUNTS = 21022  # 21022:"Торговые счета",
+    TRADES_FX = 21023  # 21023:"Торги по  # вал.парам"
+    LIMIT_HAS_RECEIVED = 21063  # LimitHasReceived = 21063
+    # MSG_ID_LEVEL2 = 21014,  # 21014:"Стаканы"
     ORDER_ANSWER = 22000  # 22000:"Ответ по заявке"
     STOP_ORDER_ANSWER = 22001  # 22001:"Ответ по стоп-заявке"
     LINKED_STOP_ORDER_ANSWER = 22002  # 22002:"Ответ по связ.стоп-заявке"
