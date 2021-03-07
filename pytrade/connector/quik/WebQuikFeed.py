@@ -17,17 +17,20 @@ class WebQuikFeed:
 
     def __init__(self, connector: WebQuikConnector):
         self._connector = connector
+
         self._connector.feed = self
 
         # Subscribers for data feed. {(class_code, sec_code): callback_func}
         self._feed_subscribers = {}
-        self._callbacks = {MsgId.MSG_ID_QUOTES: self._on_quotes,
-                           MsgId.MSG_ID_GRAPH: self._on_candle,
-                           MsgId.MSG_ID_LEVEL2: self._on_level2,
-                           }
+        self.callbacks = {MsgId.TRADE_SESSION_OPEN: self.on_trade_session_open,
+                          MsgId.QUOTES: self._on_quotes,
+                          MsgId.GRAPH: self._on_candle,
+                          MsgId.LEVEL2: self._on_level2,
+                          }
+        self._connector.subscribe(self.callbacks)
 
     def on_message(self, msg):
-        callback = self._callbacks.get(msg['msgid'])
+        callback = self.callbacks.get(msg['msgid'])
         if callback:
             callback(msg)
 
@@ -37,7 +40,7 @@ class WebQuikFeed:
         """
         # Request quotes
         self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
-        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (MsgId.MSG_ID_CREATE_DATASOURCE, class_code, sec_code, 0)
+        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (MsgId.CREATE_DATASOURCE, class_code, sec_code, 0)
         msg = msg.encode()
         self._logger.debug('Sending msg: %s' % msg)
         self._connector.websocket_app.send(msg)
@@ -45,7 +48,7 @@ class WebQuikFeed:
         self._logger.info('Requesting level2 data for %s\\%s', class_code, sec_code)
         depth = 30
         msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
-              (MsgId.MSG_ID_CREATE_LEVEL2_DATASOURCE, class_code, sec_code, depth)
+              (MsgId.CREATE_LEVEL2_DATASOURCE, class_code, sec_code, depth)
         self._logger.debug('Sending msg: %s' % msg)
         self._connector.websocket_app.send(msg, opcode=ABNF.OPCODE_BINARY)
 

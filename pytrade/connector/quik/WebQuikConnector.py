@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime
 from enum import Enum
 import websocket
 from websocket import WebSocketApp
@@ -43,9 +42,14 @@ class WebQuikConnector:
 
         # Callbacks for different messages msgid
         # Socket callback self._on_message will call these
-        self._callbacks = {MsgId.MSG_ID_AUTH: self._on_auth,
-                           MsgId.MSG_ID_TRADE_SESSION_OPEN: self._on_trade_session_open
-                           }
+        self._callbacks = {
+            MsgId.PIN_REQ: self._on_pin_req,
+            MsgId.STATUS: self._on_status,
+            MsgId.AUTH: self._on_auth,
+            MsgId.TRADE_SESSION_OPEN: self._on_trade_session_open
+        }
+        # Broker and feed, subscribed to message id
+        self._subscribers = {}
 
         # Heart beat support
         self._heartbeat_cnt = 0
@@ -66,7 +70,7 @@ class WebQuikConnector:
         """
         Send message to web quik server, for example trade order or info request.
         """
-        self._logger.info("Sending message: "+msg)
+        self._logger.info("Sending message: " + msg)
         self.websocket_app.send(msg)
 
     def _on_socket_open(self):
@@ -110,34 +114,41 @@ class WebQuikConnector:
             self.close()
             raise ConnectionError('Authentication failure: %s' % msg)
 
+    def _on_pin_req(self, msg):
+        """
+        On PIN request during auth. For some providers only.
+        """
+        pin_code = input("Enter sms pin code: ")
+        pin_msg = '{"msgid":10001,"pin":"%s"}' % pin_code
+        self.websocket_app.send(pin_msg)
+
+    def _on_status(self, msg):
+        """
+        Connected event handler
+        """
+        connected_msg = '{"msgid":10008}'
+        self.websocket_app.send(connected_msg)
+
     def _on_message(self, raw_msg):
         """
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        #self._logger.debug('Got message %s', strmsg)
+        # self._logger.debug('Got message %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         msgid = msg['msgid']
         self._logger.debug('Got message %s', msgid)
-        callback = self._callbacks.get(msgid)
-        if msgid == 20001:
-            pin_code = input("Enter sms pin code: ")
-            pin_msg = '{"msgid":10001,"pin":"%s"}' % pin_code
-            self.websocket_app.send(pin_msg) 
-        elif msgid == 20008:
-            connected_msg = '{"msgid":10008}'
-            self.websocket_app.send(connected_msg)
-        # Pass message along pipeline
-        elif callback:
-            # Don't send msg to consumers, process it in this class
-            callback(msg)
-        elif msgid // 1000 == 21 and self.feed:
-            # Send to feed
-            self.feed.on_message(msg)
-        elif msgid // 1000 == 22 and self.broker:
-            # Send to broker
-            self.broker.on_message(msg)
+
+        # Call internal callback is set up
+        msg_callback = self._callbacks.get(msgid)
+        if msg_callback:
+        # Don't send msg to consumers, process it in this class
+            msg_callback(msg)
+
+        # Call external callback: broker or feed subscriber
+        for func in self._subscribers.setdefault(msgid,[]):
+            func(msg)
 
     @staticmethod
     def asset2tuple(s):
@@ -181,3 +192,10 @@ class WebQuikConnector:
             self.feed.on_heartbeat()
         if self.broker is not None:
             self.broker.on_heartbeat()
+
+    def subscribe(self, callbacks: {}):
+        """
+        Add message callback. Broker and feeder subscribe themselves to messages using this func.
+        """
+        for msgid in callbacks:
+            self._subscribers.setdefault(msgid, []).append(callbacks[msgid])
