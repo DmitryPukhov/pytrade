@@ -17,8 +17,7 @@ class Feed2Csv(BaseFeed):
     def __init__(self, feed, sec_class, sec_code, data_dir='./data'):
         super().__init__(feed, sec_class, sec_code)
 
-
-        # Dump each minute
+        # Dump periodically
         self._write_interval = dt.timedelta(seconds=10)
         self._data_dir = data_dir
         self._logger.info("Candles and level2 will be persisted each %s to %s", self._write_interval, self._data_dir)

@@ -21,13 +21,13 @@ class App:
         self._logger.info("Initializing the App")
         config = Config
         self._connector = WebQuikConnector(conn=config.conn, passwd=Config.passwd, account=config.account)
-        web_quik_feed = WebQuikFeed(self._connector)
-        self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
+        #self._feed = WebQuikFeed(self._connector)
+        #self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
         self._broker = WebQuikBroker(self._connector)
 
         # Create feed, subscribe events
         # Todo: support making orders
-        self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
+        #self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
 
     def main(self):
         """

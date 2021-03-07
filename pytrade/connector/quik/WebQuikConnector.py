@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 import websocket
-from websocket import WebSocketApp, ABNF
+from websocket import WebSocketApp
 from connector.quik.MsgId import MsgId
 
 
@@ -62,6 +62,13 @@ class WebQuikConnector:
             # Run loop
             self.websocket_app.run_forever(ping_interval=self._HEARTBEAT_SECONDS)
 
+    def send(self, msg: str):
+        """
+        Send message to web quik server, for example trade order or info request.
+        """
+        self._logger.info("Sending message: "+msg)
+        self.websocket_app.send(msg)
+
     def _on_socket_open(self):
         """
         Socket on_open handler
@@ -81,9 +88,9 @@ class WebQuikConnector:
             self._logger.info('Authenticated')
             self.status = WebQuikConnector.Status.CONNECTED
             self._logger.info('Connected. Trade session is opened')
-            if self.feed is not None:
+            if self.feed:
                 self.feed.on_trade_session_open(msg)
-            if self.broker is not None:
+            if self.broker:
                 self.broker.on_trade_session_open(msg)
         else:
             # Not opened, failure failed
@@ -108,10 +115,11 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        self._logger.debug('Got msg %s', strmsg)
+        #self._logger.debug('Got message %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         msgid = msg['msgid']
+        self._logger.debug('Got message %s', msgid)
         callback = self._callbacks.get(msgid)
         if msgid == 20001:
             pin_code = input("Enter sms pin code: ")
@@ -124,10 +132,10 @@ class WebQuikConnector:
         elif callback:
             # Don't send msg to consumers, process it in this class
             callback(msg)
-        elif msgid // 1000 == 21 and self.feed is not None:
+        elif msgid // 1000 == 21 and self.feed:
             # Send to feed
             self.feed.on_message(msg)
-        elif msgid // 1000 == 22 and self.broker is not None:
+        elif msgid // 1000 == 22 and self.broker:
             # Send to broker
             self.broker.on_message(msg)
 
@@ -148,7 +156,7 @@ class WebQuikConnector:
         return "%s¦%s" % (t[0], t[1])
 
     def _on_error(self, error):
-        self._logger.error('Got error msg %s', error)
+        self._logger.error('Got error msg %s: %s', type(error).__name__, str(error))
 
     def close(self):
         """
