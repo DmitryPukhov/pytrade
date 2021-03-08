@@ -1,4 +1,5 @@
 import logging
+from threading import Thread
 
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
@@ -29,16 +30,15 @@ class App:
         #self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
 
         # Broker is not implemented, just a stub.
-        self._broker = WebQuikBroker(self._connector)
+        web_quik_broker = WebQuikBroker(connector=self._connector, client_code=Config.client_code, trade_account=Config.trade_account)
 
         # Create feed, subscribe events
         # Todo: support making orders
-        #self._strategy = Strategy(self._feed, self._broker, config.sec_class, config.sec_code)
+        self._strategy = Strategy(web_quik_feed, web_quik_broker, config.sec_class, config.sec_code)
 
     def main(self):
         """
         Application entry point
-        :return: None
         """
         logging.basicConfig(
             level=logging.INFO,
@@ -48,9 +48,12 @@ class App:
                 # handlers.RotatingFileHandler("pytrade.log", maxBytes=(1048576 * 5), backupCount=3),
                 logging.StreamHandler()
             ])
-        self._connector.start()
-        # Todo: support making orders
-        # self._broker.start()
+
+        # Start strategy
+        Thread(target=self._strategy.run).start()
+
+        # Start connection to web quick server
+        self._connector.run()
 
 
 if __name__ == "__main__":

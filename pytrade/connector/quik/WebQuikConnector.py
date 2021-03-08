@@ -56,7 +56,7 @@ class WebQuikConnector:
         self.feed = None
         self.broker = None
 
-    def start(self):
+    def run(self):
         """
         Create web socket and run loop
         """
@@ -70,7 +70,7 @@ class WebQuikConnector:
         """
         Send message to web quik server, for example trade order or info request.
         """
-        self._logger.info("Sending message: " + msg)
+        self._logger.debug("Sending message: " + msg)
         self.websocket_app.send(msg)
 
     def _on_socket_open(self):
@@ -134,7 +134,7 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        # self._logger.debug('Got message %s', strmsg)
+        self._logger.debug('Got message %s', strmsg)
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         msgid = msg['msgid']

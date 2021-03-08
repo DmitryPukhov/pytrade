@@ -1,9 +1,7 @@
-from connector.quik.MsgId import MsgId
-import websocket
-from datetime import datetime
-from websocket import WebSocketApp, ABNF
-import json
 import logging
+from datetime import datetime
+from websocket import ABNF
+from connector.quik.MsgId import MsgId
 from connector.quik.WebQuikConnector import WebQuikConnector
 
 
