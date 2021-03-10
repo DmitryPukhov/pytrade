@@ -5,7 +5,7 @@ import sys
 from threading import Thread
 
 import pandas as pd
-from pytrade.feed.BaseFeed import BaseFeed
+from feed.BaseFeed import BaseFeed
 pd.options.display.width = 0
 
 

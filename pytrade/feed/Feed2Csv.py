@@ -1,10 +1,8 @@
 import logging
 import datetime as dt
 import os
-
 from pandas import DataFrame
-
-from pytrade.feed.BaseFeed import BaseFeed
+from feed.BaseFeed import BaseFeed
 
 
 class Feed2Csv(BaseFeed):

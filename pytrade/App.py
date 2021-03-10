@@ -4,9 +4,9 @@ from threading import Thread
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
-from pytrade.feed.Feed2Csv import Feed2Csv
-from pytrade.Strategy import Strategy
-from pytrade.Config import Config
+from feed.Feed2Csv import Feed2Csv
+from Strategy import Strategy
+from Config import Config
 
 
 class App:
