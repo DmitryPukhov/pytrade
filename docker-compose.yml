@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  pytrade:
+    profiles:
+      - pytrade
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+        rabbitmq:
+          condition: service_healthy
+    #restart: on-failure
+    links:
+      - rabbitmq
+    networks:
+      - pytrade
+
+  rabbitmq:
+    profiles:
+      - pytrade
+      - debug
+    # There is a prebuilt RabbitMQ image; see
+    # https://hub.docker.com/_/rabbitmq/ for details.
+    # This variant is built on Alpine Linux (it's smaller) and includes
+    # the management UI.
+    image: 'rabbitmq:3.6-management-alpine'
+
+    # These ports are exposed on the host; 'hostport:containerport'.
+    # You could connect to this server from outside with the *host's*
+    # DNS name or IP address and port 5672 (the left-hand side of the
+    # colon).
+    ports:
+      # The standard AMQP protocol port
+      - '5672:5672'
+      # HTTP management UI
+      - '15672:15672'
+
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "rabbitmq", "5672" ]
+      #test: rabbitmq-diagnostic -q ping
+      interval: 5s
+      timeout: 15s
+      retries: 3
+    networks:
+      - pytrade
+networks:
+  pytrade:
+    external: false

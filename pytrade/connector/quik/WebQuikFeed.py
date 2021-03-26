@@ -4,18 +4,15 @@ from websocket import ABNF
 from connector.quik.MsgId import MsgId
 from connector.quik.WebQuikConnector import WebQuikConnector
 
-
 class WebQuikFeed:
     """
     Feed facade. Provides feed info from web quik connector to consumer.
     Parse feed messages from web quik.
     """
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
 
     def __init__(self, connector: WebQuikConnector):
+        self._logger = logging.getLogger(__name__)
         self._connector = connector
-
         self._connector.feed = self
 
         # Subscribers for data feed. {(class_code, sec_code): callback_func}

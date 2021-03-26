@@ -1,6 +1,7 @@
 # import talib as ta
 import _thread
 import json
+import logging
 import sys
 from threading import Thread
 
@@ -12,6 +13,7 @@ pd.options.display.width = 0
 class Strategy:
 
     def __init__(self, feed, broker, sec_class, sec_code):
+        self._logger = logging.getLogger(__name__)
         self._feed = feed
         self._broker = broker
         self._sec_class = sec_class

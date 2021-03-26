@@ -9,10 +9,9 @@ class BaseFeed:
     """
     Base class for any feed. Keeps quotes and level2 in pandas dataframes.
     """
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.INFO)
-
     def __init__(self, feed, sec_class, sec_code):
+        self._logger = logging.getLogger(__name__)
+
         # Connecting to feed
         self._feed = feed
         self.sec_class = sec_class

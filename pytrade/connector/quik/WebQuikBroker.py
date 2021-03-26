@@ -1,6 +1,9 @@
 import json
 import logging
+import random
+import pika
 
+from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.MsgId import MsgId
 
@@ -11,10 +14,10 @@ class WebQuikBroker:
     Supports only simple buy/sell at the moment
     Todo: add different types of orders: stop, market ...
     """
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
 
-    def __init__(self, connector: WebQuikConnector, client_code, trade_account):
+    def __init__(self, connector: WebQuikConnector, client_code, trade_account, rabbit_host):
+        self._logger = logging.getLogger(__name__)
+
         self.client_code = client_code
         self.trade_account = trade_account
         # 21001:"Заявки",
@@ -35,29 +38,48 @@ class WebQuikBroker:
         # accounts dictionary class_code -> account info
         # Usually different accounts for securities, futures, forex ??
 
+        # Init rabbit mq
+        self._logger.info(f"Init rabbit connection to {rabbit_host}")
+        self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
+        self._rabbit_channel = self._rabbit_connection.channel()
+        for q in [QueueName.TRADE_ACCOUNT,
+                  QueueName.ORDERS,
+                  QueueName.TRADES,
+                  QueueName.MONEY_LIMITS,
+                  QueueName.STOCK_LIMITS]:
+            self._logger.info(f"Declaring rabbit queue {q}")
+            self._rabbit_channel.queue_declare(queue=q)
+
     def on_trades_fx(self, msg):
         self._logger.debug(f"On trades fx. msg={msg}")
 
     def on_trade_accounts(self, msg):
         # Information about my account. Usually one for stocks, one for futures.
         # {"msgid":21022,"trdacc":"NL0011100043","firmid":"NC0011100000","classList":["QJSIM"],"mainMarginClasses":["QJSIM"],"limitsInLots":0,"limitKinds":["0","1","2"]}
+        # Just push the message to rabbitmq
         self._logger.debug(f"On trade accounts. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADE_ACCOUNT, body=str(msg))
 
     def on_orders(self, msg):
         # Information about my orders
         self._logger.debug(f"On orders. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=msg)
 
     def on_trades(self, msg):
         self._logger.debug(f"On trades. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADES, body=msg)
 
     def on_money_limits(self, msg):
         self._logger.debug(f"On money limits. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.MONEY_LIMITS, body=msg)
 
     def on_stock_limits(self, msg):
         self._logger.debug(f"On stock limits. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMITS, body=msg)
 
     def on_limit_received(self, msg):
         self._logger.debug(f"Limit has received. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMIT, body=msg)
 
     def subscribe_broker(self, subscriber):
         """
@@ -76,11 +98,31 @@ class WebQuikBroker:
         # {"msgid":21009,"request":1,"status":3,"ordernum":5736932911,"datetime":"2021-03-08 22:05:35","text":"(161) Заявка N 5736932911 зарегистрирована. Удовлетворено 1"}
         self._logger.info(f"Got msg {msg}")
 
+    def test(self):
+        msgdict = {
+            "transid": random.randint(1, 147483647),
+            "msgid": MsgId.ORDER,
+            "action": "SIMPLE_STOP_ORDER",
+            "MARKET_STOP_LIMIT": "YES",
+
+            "ccode": self.class_code,
+            "scode": self.sec_code,
+            "operation": "B",
+
+            "quantity": 1,
+            "clientcode": self.client_code,
+            "account": self.trade_account,
+            "stopprice": 215
+        }
+        msg = json.dumps(msgdict)
+        return msg
+
     def get_order_msg(self, class_code: str, sec_code: str, is_buy: bool, price: float, quantity: int) -> str:
         """
         Prepares buy or sell order json for quik
         """
         msgdict = {
+            "transid": random.randint(1, 2 ^ 64),
             "msgid": MsgId.ORDER,
             "ccode": class_code,
             "scode": sec_code,

@@ -24,10 +24,9 @@ class WebQuikConnector:
 
     _HEARTBEAT_SECONDS = 3
 
-    _logger = logging.getLogger(__name__)
-    _logger.setLevel(logging.DEBUG)
-
     def __init__(self, conn, account, passwd):
+        self._logger = logging.getLogger(__name__)
+
         # Create websocket, do not open and run here
         self._conn = conn
         self.websocket_app: WebSocketApp = websocket.WebSocketApp(self._conn,
@@ -92,10 +91,10 @@ class WebQuikConnector:
             self._logger.info('Authenticated')
             self.status = WebQuikConnector.Status.CONNECTED
             self._logger.info('Connected. Trade session is opened')
-            if self.feed:
-                self.feed.on_trade_session_open(msg)
-            if self.broker:
-                self.broker.on_trade_session_open(msg)
+            # if self.feed:
+            #     self.feed.on_trade_session_open(msg)
+            # if self.broker:
+            #     self.broker.on_trade_session_open(msg)
         else:
             # Not opened, failure failed
             self.status = WebQuikConnector.Status.DISCONNECTED
