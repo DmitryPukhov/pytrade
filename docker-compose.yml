@@ -1,5 +1,6 @@
 version: "3.9"
 services:
+  # Main app - pytrade
   pytrade:
     profiles:
       - pytrade
@@ -14,11 +15,12 @@ services:
       - rabbitmq
     networks:
       - pytrade
-
+  # Rabbit for exchange between systems
   rabbitmq:
     profiles:
       - pytrade
       - debug
+      - rabbit
     # There is a prebuilt RabbitMQ image; see
     # https://hub.docker.com/_/rabbitmq/ for details.
     # This variant is built on Alpine Linux (it's smaller) and includes
@@ -43,6 +45,26 @@ services:
       retries: 3
     networks:
       - pytrade
+
+  # Angular web ui for basic management
+  angular: #Web ui
+    profiles:
+      - pytrade
+      - debug
+      - angular
+
+    container_name: pytrade-www  # Container name
+    build: ./www # Location of our Dockerfile
+    volumes: # Volume binding
+      - './angulardockerproject:/usr/src/app'
+    ports:
+      - '4200:4200' # Port mapping
+    command: >
+      bash -c "npm install && ng serve --host 0.0.0.0 --port 4200"
+    networks:
+      - pytrade
+
+# Network for exchange between systems
 networks:
   pytrade:
     external: false
