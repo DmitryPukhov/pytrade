@@ -15,17 +15,58 @@ services:
       - rabbitmq
     networks:
       - pytrade
+
   # Rabbit for exchange between systems
   rabbitmq:
     profiles:
       - pytrade
       - debug
       - rabbit
+    build:
+      context: ./rabbit
+      dockerfile: Dockerfile
+    # There is a prebuilt RabbitMQ image; see
+    # https://hub.docker.com/_/rabbitmq/ for details.
+    # This variant is built on Alpine Linux (it's smaller) and includes
+    # the management UI.
+#    image: 'rabbitmq:3.6-management-alpine'
+#    volumes:
+#      - "./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins"
+
+    # These ports are exposed on the host; 'hostport:containerport'.
+    # You could connect to this server from outside with the *host's*
+    # DNS name or IP address and port 5672 (the left-hand side of the
+    # colon).
+    ports:
+      # The standard AMQP protocol port
+      - '5672:5672'
+      # HTTP management UI
+      - '15672:15672'
+      # Stomp
+      - '15674:15674'
+
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "rabbitmq", "5672" ]
+      #test: rabbitmq-diagnostic -q ping
+      interval: 5s
+      timeout: 15s
+      retries: 3
+    networks:
+      - pytrade
+
+  # Rabbit for exchange between systems
+  rabbitmq0:
+    profiles:
+      - pytrade
+      - debug0
+      - rabbit0
     # There is a prebuilt RabbitMQ image; see
     # https://hub.docker.com/_/rabbitmq/ for details.
     # This variant is built on Alpine Linux (it's smaller) and includes
     # the management UI.
     image: 'rabbitmq:3.6-management-alpine'
+#    volumes:
+#      - "./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins"
 
     # These ports are exposed on the host; 'hostport:containerport'.
     # You could connect to this server from outside with the *host's*
@@ -60,7 +101,7 @@ services:
     ports:
       - '4200:4200' # Port mapping
     command: >
-      bash -c "npm install && ng serve --host 0.0.0.0 --port 4200"
+      bash -c "npm install && ng serve --host 0.0.0.0 --port 4200 --live-reload -o"
     networks:
       - pytrade
 
