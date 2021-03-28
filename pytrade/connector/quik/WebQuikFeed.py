@@ -1,8 +1,11 @@
 import logging
 from datetime import datetime
+import pika
 from websocket import ABNF
 from connector.quik.MsgId import MsgId
+from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikConnector import WebQuikConnector
+
 
 class WebQuikFeed:
     """
@@ -10,7 +13,7 @@ class WebQuikFeed:
     Parse feed messages from web quik.
     """
 
-    def __init__(self, connector: WebQuikConnector):
+    def __init__(self, connector: WebQuikConnector, rabbit_host: str):
         self._logger = logging.getLogger(__name__)
         self._connector = connector
         self._connector.feed = self
@@ -23,6 +26,13 @@ class WebQuikFeed:
                           MsgId.LEVEL2: self._on_level2,
                           }
         self._connector.subscribe(self.callbacks)
+
+        # Init rabbitmq connection
+        self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
+        self._rabbit_channel = self._rabbit_connection.channel()
+        for q in [QueueName.CANDLES]:
+            self._logger.info(f"Declaring rabbit queue {q}")
+            self._rabbit_channel.queue_declare(queue=q, durable=True)
 
     def on_message(self, msg):
         callback = self.callbacks.get(msg['msgid'])
@@ -108,6 +118,9 @@ class WebQuikFeed:
                     l_ = ohlcv['l']
                     c = ohlcv['c']
                     v = ohlcv['v']
+                    # Send the candle to rabbitmq
+                    self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
+
                     # Send data to subscribers
                     self._feed_subscribers[(asset_class, asset_code)] \
                         .on_candle(asset_class, asset_code, dt, o, h, l_, c, v)

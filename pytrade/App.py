@@ -23,7 +23,7 @@ class App:
         self._connector = WebQuikConnector(conn=config.conn, passwd=Config.passwd, account=config.account)
 
         # Feed2Csv just receive price and level2 for single configured asset and write to data folder
-        web_quik_feed = WebQuikFeed(self._connector)
+        web_quik_feed = WebQuikFeed(self._connector, rabbit_host=config.rabbit_host)
         # self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
 
         # Broker is not implemented, just a stub.
@@ -39,15 +39,6 @@ class App:
         os.makedirs(logdir, exist_ok=True)
         cfgpath = "cfg/logging.cfg"
         logging.config.fileConfig(cfgpath)
-        # logging.basicConfig(
-        #     level=logging.INFO,
-        #     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-        #     datefmt="%Y-%m-%d %H:%M:%S",
-        #     handlers=[
-        #         #handlers.RotatingFileHandler("log/pytrade.log", maxBytes=(1048576 * 5), backupCount=3),
-        #         handlers.RotatingFileHandler(logpath, maxBytes=(1048576 * 5), backupCount=3),
-        #         logging.StreamHandler()
-        #     ])
         self._logger = logging.getLogger(__name__)
         self._logger.info(f"Logging configured from {cfgpath}")
 
@@ -58,12 +49,6 @@ class App:
 
         # Start strategy
         Thread(target=self._strategy.run).start()
-
-        # Start connection to web quick server# _rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        # # _rabbit_channel = _rabbit_connection.channel()
-        # # _rabbit_channel.queue_declare(queue="hello")
-        # # _rabbit_channel.basic_publish(exchange="", routing_key="pytrade.broker", body="hello, world!")
-        # # _rabbit_channel.close()
         self._connector.run()
 
 

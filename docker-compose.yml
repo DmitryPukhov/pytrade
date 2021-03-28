@@ -45,9 +45,13 @@ services:
   # Angular web ui for basic management
   angular: #Web ui
 #    profiles:
+#      - angular
 #      - pytrade
 #      - debug
 #      - angular
+    depends_on:
+      pytrade:
+        condition: service_started
     container_name: pytrade-www  # Container name
     build:
       context: ./www

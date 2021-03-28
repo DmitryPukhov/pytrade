@@ -12,8 +12,8 @@ class Config:
     conn = 'wss://' + server + ':443/quik'
 
     # Account and password, provided by broker
-    account = 'U0179289'
-    passwd = '08965'
+    account = 'U0179349'
+    passwd = '00935'
     # Client code, provided by broker
     client_code = '10113'
     # Trade account for specific market. Can be seen as "firm" or "account" column in quik tables

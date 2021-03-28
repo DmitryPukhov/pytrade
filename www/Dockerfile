@@ -1,5 +1,5 @@
 # This defines our starting point
-FROM node:10
+FROM node:10 as build-step
 RUN mkdir -p /www/src/app
 WORKDIR /www
 # Install common dependencies
@@ -18,6 +18,8 @@ RUN npm install -g @stomp/stompjs websocket --save
 
 
 COPY . .
-RUN bash -c "npm install && ng serve --host 0.0.0.0 --port 4200 --live-reload -o"
+#RUN npm install && ng serve --host 0.0.0.0 --port 4200 --live-reload -o &
+#FROM nginx:1.17.1-alpine
+#COPY --from=build-step /www /usr/share/nginx/html
 
 

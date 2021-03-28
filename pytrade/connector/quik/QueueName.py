@@ -8,3 +8,4 @@ class QueueName(object):
     MONEY_LIMITS = "pytrade.broker.money.limits"
     STOCK_LIMITS = "pytrade.broker.stock.limits"
     LIMIT = "pytrade.broker.stock.limit"
+    CANDLES="pytrade.feed.candles"

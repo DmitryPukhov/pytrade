@@ -10,12 +10,14 @@ import { rxStompConfig } from './rx-stomp.config';
 
 import { AppComponent } from './app.component';
 import { TradeAccountComponent } from './trade-account/trade-account.component';
+import { GraphComponent } from './graph/graph.component';
 
 
 @NgModule({
   declarations: [
     AppComponent,
-    TradeAccountComponent
+    TradeAccountComponent,
+    GraphComponent
   ],
   imports: [
     BrowserModule
