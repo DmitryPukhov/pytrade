@@ -4,8 +4,8 @@ class Config:
     """
     log_dir= "../logs"
 
-    rabbit_host="localhost"
-    #rabbit_host="rabbitmq"
+    #rabbit_host="localhost"
+    rabbit_host="rabbitmq"
 
     # Web quik config
     server = 'junior.webquik.ru'

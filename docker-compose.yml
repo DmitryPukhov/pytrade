@@ -2,14 +2,14 @@ version: "3.9"
 services:
   # Main app - pytrade
   pytrade:
-    profiles:
-      - pytrade
+#    profiles:
+#      - pytrade
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-        rabbitmq:
-          condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     #restart: on-failure
     links:
       - rabbitmq
@@ -18,25 +18,13 @@ services:
 
   # Rabbit for exchange between systems
   rabbitmq:
-    profiles:
-      - pytrade
-      - debug
-      - rabbit
+#    profiles:
+#      - pytrade
+#      - debug
+#      - rabbit
     build:
       context: ./rabbit
       dockerfile: Dockerfile
-    # There is a prebuilt RabbitMQ image; see
-    # https://hub.docker.com/_/rabbitmq/ for details.
-    # This variant is built on Alpine Linux (it's smaller) and includes
-    # the management UI.
-#    image: 'rabbitmq:3.6-management-alpine'
-#    volumes:
-#      - "./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins"
-
-    # These ports are exposed on the host; 'hostport:containerport'.
-    # You could connect to this server from outside with the *host's*
-    # DNS name or IP address and port 5672 (the left-hand side of the
-    # colon).
     ports:
       # The standard AMQP protocol port
       - '5672:5672'
@@ -54,50 +42,16 @@ services:
     networks:
       - pytrade
 
-  # Rabbit for exchange between systems
-  rabbitmq0:
-    profiles:
-      - pytrade
-      - debug0
-      - rabbit0
-    # There is a prebuilt RabbitMQ image; see
-    # https://hub.docker.com/_/rabbitmq/ for details.
-    # This variant is built on Alpine Linux (it's smaller) and includes
-    # the management UI.
-    image: 'rabbitmq:3.6-management-alpine'
-#    volumes:
-#      - "./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins"
-
-    # These ports are exposed on the host; 'hostport:containerport'.
-    # You could connect to this server from outside with the *host's*
-    # DNS name or IP address and port 5672 (the left-hand side of the
-    # colon).
-    ports:
-      # The standard AMQP protocol port
-      - '5672:5672'
-      # HTTP management UI
-      - '15672:15672'
-
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "rabbitmq", "5672" ]
-      #test: rabbitmq-diagnostic -q ping
-      interval: 5s
-      timeout: 15s
-      retries: 3
-    networks:
-      - pytrade
-
   # Angular web ui for basic management
   angular: #Web ui
-    profiles:
-      - pytrade
-      - debug
-      - angular
-
+#    profiles:
+#      - pytrade
+#      - debug
+#      - angular
     container_name: pytrade-www  # Container name
-    build: ./www # Location of our Dockerfile
-    volumes: # Volume binding
-      - './angulardockerproject:/usr/src/app'
+    build:
+      context: ./www
+      dockerfile: Dockerfile
     ports:
       - '4200:4200' # Port mapping
     command: >

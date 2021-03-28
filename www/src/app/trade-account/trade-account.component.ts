@@ -10,17 +10,27 @@ import { Subscription } from 'rxjs';
   templateUrl: './trade-account.component.html',
   styleUrls: ['./trade-account.component.css']
 })
+
+/**
+ * Account information
+ */
 export class TradeAccountComponent  implements OnInit, OnDestroy {
   public receivedMessages: string[] = [];
   private topicSubscription: Subscription;
+  // Rabbit queue name
+  private accountQueue = 'pytrade.broker.trade.account'
 
   constructor(private rxStompService: RxStompService) {}
 
   ngOnInit() {
+    // Subscribe to rabbit messages
     this.topicSubscription = this.rxStompService
-      .watch('/topic/demo')
+      .watch(this.accountQueue)
       .subscribe((message: Message) => {
         this.receivedMessages.push(message.body);
+      },
+      (error: Error) => {
+        console.log(new Date(), error)
       });
   }
 
@@ -29,7 +39,8 @@ export class TradeAccountComponent  implements OnInit, OnDestroy {
   }
 
   onSendMessage() {
+    // Send test message to rabbit
     const message = `Message generated at ${new Date()}`;
-    this.rxStompService.publish({ destination: '/topic/demo', body: message });
+    this.rxStompService.publish({ destination: this.accountQueue, body: message });
   }
 }

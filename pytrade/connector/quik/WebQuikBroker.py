@@ -40,6 +40,7 @@ class WebQuikBroker:
 
         # Init rabbit mq
         self._logger.info(f"Init rabbit connection to {rabbit_host}")
+        #self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()
         for q in [QueueName.TRADE_ACCOUNT,
@@ -48,7 +49,7 @@ class WebQuikBroker:
                   QueueName.MONEY_LIMITS,
                   QueueName.STOCK_LIMITS]:
             self._logger.info(f"Declaring rabbit queue {q}")
-            self._rabbit_channel.queue_declare(queue=q)
+            self._rabbit_channel.queue_declare(queue=q, durable=True)
 
     def on_trades_fx(self, msg):
         self._logger.debug(f"On trades fx. msg={msg}")
