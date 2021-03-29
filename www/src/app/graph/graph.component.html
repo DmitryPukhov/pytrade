@@ -1,11 +1,16 @@
 <div id="graph">
   <h2>Candles</h2>
+
+  <plotly-plot [divId]="plotlyDiv" [data]="graph.data" [layout]="graph.layout"></plotly-plot>
+  <!-- <plotly-plot [data]="timeSeries.data" [layout]="timeSeries.layout" [updateOnDataChange]="true"></plotly-plot> -->
+  <!-- <plotly-plot [data]="graphSample.data" [layout]="graphSample.layout"></plotly-plot> -->
   <ol>
     <!-- we will use Angular binding to populate list of messages -->
-    <li class="candles" *ngFor="let candle of candles">
-      {{candle}}
+    <li class="candlesMsgs" *ngFor="let candleMsg of candlesMsgs">
+      {{candleMsg}}
     </li>
   </ol>
+  the end
 </div>
 
 

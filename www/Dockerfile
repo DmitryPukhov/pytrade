@@ -15,8 +15,10 @@ RUN npm install -g buffer
 RUN npm install -g promise
 RUN npm install @stomp/ng2-stompjs
 RUN npm install -g @stomp/stompjs websocket --save
-
-
+#RUN npm install angular-plotly.js plotly.js
+RUN npm install --save plotly.js
+RUN npm install --save-dev @types/plotly.js
+RUN npm install --save angular-plotly.js
 COPY . .
 #RUN npm install && ng serve --host 0.0.0.0 --port 4200 --live-reload -o &
 #FROM nginx:1.17.1-alpine

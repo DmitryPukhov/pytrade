@@ -6,12 +6,15 @@ import {
 
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { rxStompConfig } from './rx-stomp.config';
 
 import { AppComponent } from './app.component';
 import { TradeAccountComponent } from './trade-account/trade-account.component';
 import { GraphComponent } from './graph/graph.component';
-
+import * as PlotlyJS from 'plotly.js/dist/plotly.js';
+import { PlotlyModule } from 'angular-plotly.js';
+PlotlyModule.plotlyjs = PlotlyJS;
 
 @NgModule({
   declarations: [
@@ -20,7 +23,7 @@ import { GraphComponent } from './graph/graph.component';
     GraphComponent
   ],
   imports: [
-    BrowserModule
+    BrowserModule, CommonModule, PlotlyModule
   ],
   providers: [
     {
