@@ -142,11 +142,11 @@ class WebQuikConnector:
         # Call internal callback is set up
         msg_callback = self._callbacks.get(msgid)
         if msg_callback:
-        # Don't send msg to consumers, process it in this class
+            # Don't send msg to consumers, process it in this class
             msg_callback(msg)
 
         # Call external callback: broker or feed subscriber
-        for func in self._subscribers.setdefault(msgid,[]):
+        for func in self._subscribers.setdefault(msgid, []):
             func(msg)
 
     @staticmethod
@@ -179,8 +179,16 @@ class WebQuikConnector:
             self.websocket_app.close()
 
     def _on_close(self):
-        self.status = WebQuikConnector.Status.DISCONNECTED
-        self._logger.info('Disconnected')
+        if self.status == WebQuikConnector.Status.DISCONNECTING:
+            # If it's me who closed the socket
+            self.status = WebQuikConnector.Status.DISCONNECTED
+            self._logger.info('Disconnected')
+        else:
+            # Reconnect if closed itself without my wish
+            self._logger.info('The socket unexpectedly closed, reconnecting...')
+            self.websocket_app.close()
+            self.status = WebQuikConnector.Status.DISCONNECTED
+            self.run()
 
     def _on_heartbeat(self, *args):
         """

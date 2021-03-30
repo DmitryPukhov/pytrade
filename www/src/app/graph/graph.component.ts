@@ -11,8 +11,7 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./graph.component.css']
 })
 export class GraphComponent  implements OnInit, OnDestroy {
-  public plotlyDiv = "plotlyDiv"
-  public timeSeriesDiv = "timeSeriesDiv"
+  public chartDiv = "chartDiv"
   public graph = {
     data: [
         { x: [], 
@@ -20,21 +19,18 @@ export class GraphComponent  implements OnInit, OnDestroy {
           high: [],
           low: [],
           close: [],
-           type: 'ohlc' }
+          y:[],
+          // Candlestick chart does not look well on test data where o=c=h=l etc
+          //type: 'candlestick'
+          type: 'timeseries'
+         }
     ],
-    layout: { title: 'Candles',
+    layout: { title: 'Price',
       xaxis:  { autorange: true},
       yaxis:  { autorange: true}
   }
 };
-public timeSeries = {
-  data:[
-    {x:[],
-    y:[],
-  type:'timeseries'}
-  ],
-  layout: { title: 'Price'}
-}
+
 
   public candlesMsgs: string[] = [];
   private topicSubscription: Subscription;
@@ -65,26 +61,31 @@ public timeSeries = {
       console.log(ohlcvString)
       var ohlcv = JSON.parse(ohlcvString.replace(/'/g, '"'))
 
-      // var element = this.plotly.getInstanceByDivId(this.plotlyDiv)
-      // this.plotly.update(element, [], this.graph.layout)
-
-      // var ohlcv = JSON.parse(ohlcvString.replace(/'/g, '"'))
-      // this.graph.data[0].x.push(ohlcv.d)
-      // this.graph.data[0].open.push(ohlcv.o)
-      // this.graph.data[0].high.push(ohlcv.h)
-      // this.graph.data[0].low.push(ohlcv.l)
-      // this.graph.data[0].close.push(ohlcv.c)
-      // // Refresh candles
-      // this.plotly.update(element, this.graph.data, this.graph.layout)
-
-
       // Refresh prices
-      this.timeSeries.data[0].x.push(ohlcv.d)
-      this.timeSeries.data[0].y.push(ohlcv.c)
+      // If time is the same, replace the last point in the char
+      var candles = this.graph.data[0]
+      var times = candles.x
+      var lastTime = times[times.length-1]
+      if(lastTime == ohlcv.d){
+       candles.x.pop()
+       candles.open.pop()
+       candles.high.pop()
+       candles.low.pop()
+       candles.close.pop()
+       candles.y.pop()
+    }
+
+    candles.x.push(ohlcv.d)
+    candles.open.push(ohlcv.o)
+    candles.high.push(ohlcv.h)
+    candles.low.push(ohlcv.l)
+    candles.close.push(ohlcv.c)
+    candles.y.push(ohlcv.c)
+
       // Hack to update plotly
-      var timeSeriesElement = this.plotly.getInstanceByDivId(this.timeSeriesDiv)
-      this.plotly.update(timeSeriesElement, [], this.timeSeries.layout)
-      this.plotly.update(timeSeriesElement, this.timeSeries.data, this.timeSeries.layout)
+    var candlesElement = this.plotly.getInstanceByDivId(this.chartDiv)
+    this.plotly.update(candlesElement, [], this.graph.layout)
+    this.plotly.update(candlesElement, this.graph.data, this.graph.layout)
 
       //this.cdRef.detectChanges();
   }
