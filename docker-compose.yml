@@ -2,8 +2,6 @@ version: "3.9"
 services:
   # Main app - pytrade
   pytrade:
-#    profiles:
-#      - pytrade
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,10 +16,6 @@ services:
 
   # Rabbit for exchange between systems
   rabbitmq:
-#    profiles:
-#      - pytrade
-#      - debug
-#      - rabbit
     build:
       context: ./rabbit
       dockerfile: Dockerfile
@@ -32,6 +26,7 @@ services:
       - '15672:15672'
       # Stomp
       - '15674:15674'
+      - '61613:61613'
 
     healthcheck:
       test: [ "CMD", "nc", "-z", "rabbitmq", "5672" ]
@@ -44,11 +39,6 @@ services:
 
   # Angular web ui for basic management
   angular: #Web ui
-#    profiles:
-#      - angular
-#      - pytrade
-#      - debug
-#      - angular
     depends_on:
       pytrade:
         condition: service_started

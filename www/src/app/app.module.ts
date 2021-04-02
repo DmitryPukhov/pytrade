@@ -14,6 +14,7 @@ import { TradeAccountComponent } from './trade-account/trade-account.component';
 import { GraphComponent } from './graph/graph.component';
 import * as PlotlyJS from 'plotly.js/dist/plotly.js';
 import { PlotlyModule } from 'angular-plotly.js';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 PlotlyModule.plotlyjs = PlotlyJS;
 
 @NgModule({
@@ -23,7 +24,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
     GraphComponent
   ],
   imports: [
-    BrowserModule, CommonModule, PlotlyModule
+    BrowserModule, CommonModule, PlotlyModule, BrowserAnimationsModule
   ],
   providers: [
     {
