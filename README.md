@@ -15,6 +15,6 @@ Configure **server**, **account** and **passwd** variables in **Config.py**
 ## Running
 docker-compose up
 
-Open dev tools in browser: [http://localhost:4200](http://localhost:4200)
-Strings with messages should appear in real time.
+Open dev tools in browser: [http://localhost:3000](http://localhost:3000)
+Price chart should appear in real time.
  

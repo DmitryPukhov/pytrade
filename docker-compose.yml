@@ -2,20 +2,22 @@ version: "3.9"
 services:
   # Main app - pytrade
   pytrade:
+    container_name: pytrade
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      rabbitmq:
+      rabbit:
         condition: service_healthy
     #restart: on-failure
     links:
-      - rabbitmq
+      - rabbit
     networks:
       - pytrade
 
   # Rabbit for exchange between systems
-  rabbitmq:
+  rabbit:
+    container_name: pytrade-rabbit
     build:
       context: ./rabbit
       dockerfile: Dockerfile
@@ -29,7 +31,7 @@ services:
       - '61613:61613'
 
     healthcheck:
-      test: [ "CMD", "nc", "-z", "rabbitmq", "5672" ]
+      test: [ "CMD", "nc", "-z", "rabbit", "5672" ]
       #test: rabbitmq-diagnostic -q ping
       interval: 5s
       timeout: 15s
@@ -37,19 +39,19 @@ services:
     networks:
       - pytrade
 
-  # Angular web ui for basic management
-  angular: #Web ui
+  # React web ui for basic management
+  www:
+    container_name: pytrade-www
     depends_on:
       pytrade:
         condition: service_started
-    container_name: pytrade-www  # Container name
     build:
-      context: ./www
+      context: www
       dockerfile: Dockerfile
     ports:
-      - '4200:4200' # Port mapping
+      - '3000:3000' # localhost:3000 in browser
     command: >
-      bash -c "npm install && ng serve --host 0.0.0.0 --port 4200 --live-reload -o"
+      bash -c "npm install && npm start --host 0.0.0.0 --port 3000 --live-reload -o"
     networks:
       - pytrade
 
