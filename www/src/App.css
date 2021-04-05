@@ -56,9 +56,12 @@ html, body {
   padding: 20px;
   background-color:rgb(252, 251, 216);
 }
+/* 
+Main{
+  display: flex;
+} */
 
-
-.App .price-chart {
+.price-chart, .trade-account {
   margin-top:1em;
 }
 

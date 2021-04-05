@@ -25,30 +25,17 @@ class PriceChart extends Component{
 
     constructor(props)  {
         super(props);
-        // Create rabbit client
-        this.stompConfig = stompConfig;
         this.plotly = React.createRef();
 
-        console.log('Creating stomp client over web socket: '  + this.stompConfig.brokerURL)
-        this.stompClient = Stomp.over(new WebSocket(this.stompConfig.brokerURL))
+        // Get stomp client for rabbit connection
+        this.stompClient = props.stompClient;
+
         this.candlesQueue='pytrade.feed.candles';
         this.state={lastCandle:{d:null,c:null}, data: this.graph.data, layout: this.graph.layout, candles: []};
     }
 
-    componentDidMount() {
-        // Connect to rabbit
-        console.log('Connecting to rabbit')
-        this.stompClient.connect(this.stompConfig.connectHeaders, this.onConnect.bind(this), this.onError)
-    }
-  
-    componentWillUnmount() {
-        // Disconnect on exit
-        console.log('Disconnecting')
-        this.stompClient.disconnect();
-    }    
-
    /***
-     * Got new candle
+     * Got new candle event handler
      */
     onCandle(msg){
         console.log('Got message: '+msg);
@@ -88,14 +75,9 @@ class PriceChart extends Component{
     }
 
     onConnect(){
-        console.log('Connected');
-        // Subscribe to rabbit queues
+        // Subscribe to rabbit queue
         console.log('Subscribing to '+ this.candlesQueue);
         this.stompClient.subscribe(this.candlesQueue, this.onCandle.bind(this));       
-    }
-
-    onError(e){
-        console.log('Connection error: '+e)
     }
 
     render() {
