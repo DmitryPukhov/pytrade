@@ -56,6 +56,11 @@ html, body {
   padding: 20px;
   background-color:rgb(252, 251, 216);
 }
+
+header {
+  text-align: center;
+  font-weight: bold;
+}
 /* 
 Main{
   display: flex;
@@ -64,4 +69,19 @@ Main{
 .price-chart, .trade-account {
   margin-top:1em;
 }
+
+.trade-account{
+}
+.trade-account ul {
+}
+.trade-account li{
+  list-style-type:none;
+}
+/* label {
+  padding:0.5em;
+} */
+input {
+  margin:0.5em
+}
+
 

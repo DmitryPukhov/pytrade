@@ -77,7 +77,7 @@ class PriceChart extends Component{
     onConnect(){
         // Subscribe to rabbit queue
         console.log('Subscribing to '+ this.candlesQueue);
-        this.stompClient.subscribe(this.candlesQueue, this.onCandle.bind(this));       
+        this.stompClient.subscribe(this.candlesQueue, this.onCandle.bind(this), {});       
     }
 
     render() {

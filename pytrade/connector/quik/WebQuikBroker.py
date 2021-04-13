@@ -1,6 +1,8 @@
 import json
 import logging
 import random
+from threading import Thread
+
 import pika
 
 from connector.quik.QueueName import QueueName
@@ -40,16 +42,29 @@ class WebQuikBroker:
 
         # Init rabbit mq
         self._logger.info(f"Init rabbit connection to {rabbit_host}")
-        #self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
+        #self._rabbit_connection = pika.connection.Connection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()
         for q in [QueueName.TRADE_ACCOUNT,
                   QueueName.ORDERS,
                   QueueName.TRADES,
                   QueueName.MONEY_LIMITS,
-                  QueueName.STOCK_LIMITS]:
+                  QueueName.STOCK_LIMITS
+                  ]:
             self._logger.info(f"Declaring rabbit queue {q}")
             self._rabbit_channel.queue_declare(queue=q, durable=True)
+
+        self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
+        self._rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
+
+        # Subscribe to buy/sell events
+        self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
+        self._rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell, consumer_tag="WebQuikBroker")
+        #self._rabbit_channel.start_consuming()
+        self._logger.info("Initialized")
+
+    def on_cmd_buysell(self, channel, method_frame, header_frame, msg):
+        self._logger.info(f"Got buy/sell command. msg={msg}")
 
     def on_trades_fx(self, msg):
         self._logger.debug(f"On trades fx. msg={msg}")

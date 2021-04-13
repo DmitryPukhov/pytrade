@@ -4,6 +4,9 @@ import {stompConfig} from './stompConfig'
 import Stomp from 'stompjs'
 import PriceChart from './pricechart/PriceChart.js';
 import TradeAccount from './broker/TradeAccount.js';
+import Orders from './broker/Orders.js';
+import BuySell from './broker/BuySell';
+
 import React,{Component} from 'react'
 
 
@@ -14,6 +17,8 @@ class App extends React.Component {
     super(props);
     this.priceChart = React.createRef();
     this.tradeAcount = React.createRef();
+    this.orders = React.createRef();
+    this.buySell = React.createRef();
     // Initialize stomp
     this.stompConfig = stompConfig;
     console.log('Creating stomp client over web socket: '  + this.stompConfig.brokerURL)
@@ -50,8 +55,11 @@ class App extends React.Component {
           <div className="App">
             <header className="App-header">Pytrade dev tools</header>
             <main>
-            <TradeAccount ref={this.tradeAcount} stompClient={this.stompClient}></TradeAccount>
+              <TradeAccount ref={this.tradeAcount} stompClient={this.stompClient}></TradeAccount>
+              <Orders ref={this.orders} stompClient={this.stompClient}></Orders>
+              <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell>
               <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
+
             </main>
 
           </div>

@@ -4,6 +4,7 @@ class QueueName(object):
     """
     TRADE_ACCOUNT = "pytrade.broker.trade.account"
     ORDERS = "pytrade.broker.orders"
+    CMD_BUYSELL="pytrade.broker.cmd.buysell"
     TRADES = "pytrade.broker.trades"
     MONEY_LIMITS = "pytrade.broker.money.limits"
     STOCK_LIMITS = "pytrade.broker.stock.limits"
