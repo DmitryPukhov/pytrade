@@ -20,6 +20,7 @@ class WebQuikBroker:
     def __init__(self, connector: WebQuikConnector, client_code, trade_account, rabbit_host):
         self._logger = logging.getLogger(__name__)
 
+        self._rabbit_host = rabbit_host
         self.client_code = client_code
         self.trade_account = trade_account
         # 21001:"Заявки",
@@ -43,7 +44,7 @@ class WebQuikBroker:
         # Init rabbit mq
         self._logger.info(f"Init rabbit connection to {rabbit_host}")
         self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
-        #self._rabbit_connection = pika.connection.Connection(pika.ConnectionParameters(rabbit_host))
+        # self._rabbit_connection = pika.connection.Connection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()
         for q in [QueueName.TRADE_ACCOUNT,
                   QueueName.ORDERS,
@@ -54,14 +55,26 @@ class WebQuikBroker:
             self._logger.info(f"Declaring rabbit queue {q}")
             self._rabbit_channel.queue_declare(queue=q, durable=True)
 
-        self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
-        self._rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
+        # Subscribe to buy/sell events in new thread because pika consumes synchronously only
+        self._consumer_rabbit_connection = None
+        self._consumer_rabbit_channel = None
+        Thread(target=self.listen_commands).start()
 
-        # Subscribe to buy/sell events
-        self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
-        self._rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell, consumer_tag="WebQuikBroker")
-        #self._rabbit_channel.start_consuming()
         self._logger.info("Initialized")
+
+    def listen_commands(self):
+        """
+        Consuming buy/sell commands from rabbit
+        """
+        self._consumer_rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(self._rabbit_host))
+        self._consumer_rabbit_channel = self._consumer_rabbit_connection.channel()
+
+        self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
+        self._consumer_rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
+        self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
+        self._consumer_rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell,
+                                                    consumer_tag="WebQuikBroker")
+        self._consumer_rabbit_channel.start_consuming()
 
     def on_cmd_buysell(self, channel, method_frame, header_frame, msg):
         self._logger.info(f"Got buy/sell command. msg={msg}")
