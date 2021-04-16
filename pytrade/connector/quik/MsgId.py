@@ -39,10 +39,10 @@ class MsgId:
     # MSG_ID_LEVEL2 = 21014,  # 21014:"Стаканы"
 
     ORDER = 12000
-    ORDER_ANSWER = 22000  # 22000:"Ответ по заявке"
-    STOP_ORDER_ANSWER = 22001  # 22001:"Ответ по стоп-заявке"
-    LINKED_STOP_ORDER_ANSWER = 22002  # 22002:"Ответ по связ.стоп-заявке"
-    CONDITIONAL_STOP_ORDER_ANSWER = 22003  # 22003:"Ответ по услов.стоп-заявке"
-    FX_ORDER_ANSWER = 22004  # ,22004:"Ответ по FX-заявке",
-    REMOVE_ORDER_ANSWER = 22100  # 22100:"Ответ по снятию заявки",
-    REMOVE_STOP_ORDER_ANSWER = 22101  # 22101:"Ответ по снятию стоп-заявки"
+    ORDER_REPLY = 22000  # 22000:"Ответ по заявке"
+    STOP_ORDER_REPLY = 22001  # 22001:"Ответ по стоп-заявке"
+    LINKED_STOP_ORDER_REPLY = 22002  # 22002:"Ответ по связ.стоп-заявке"
+    CONDITIONAL_STOP_ORDER_REPLY = 22003  # 22003:"Ответ по услов.стоп-заявке"
+    FX_ORDER_REPLY = 22004  # ,22004:"Ответ по FX-заявке",
+    REMOVE_ORDER_REPLY = 22100  # 22100:"Ответ по снятию заявки",
+    REMOVE_STOP_ORDER_REPLY = 22101  # 22101:"Ответ по снятию стоп-заявки"

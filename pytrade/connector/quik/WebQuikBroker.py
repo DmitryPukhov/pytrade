@@ -34,7 +34,10 @@ class WebQuikBroker:
             MsgId.TRADES_FX: self.on_trades_fx,
             MsgId.MONEY_LIMITS: self.on_money_limits,
             MsgId.STOCK_LIMITS: self.on_stock_limits,
-            MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received}
+            MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received,
+            MsgId.ORDER_REPLY: self.on_order_answer,
+            MsgId.TRANS_REPLY: self.on_trans_reply
+        }
         self._connector = connector
         self._connector.subscribe(self.callbacks)
         self._broker_subscribers = {}
@@ -76,8 +79,18 @@ class WebQuikBroker:
                                                     consumer_tag="WebQuikBroker")
         self._consumer_rabbit_channel.start_consuming()
 
-    def on_cmd_buysell(self, channel, method_frame, header_frame, msg):
-        self._logger.info(f"Got buy/sell command. msg={msg}")
+    def on_order_answer(self, msg):
+        self._logger.info(f"Got msg: {msg}")
+
+    def on_cmd_buysell(self, channel, method_frame, header_frame, rawmsg):
+        self._logger.info(f"Got buy/sell command. msg={rawmsg}")
+        msg=json.loads(rawmsg)
+        if msg["operation"] == "buy":
+            self.buy(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+        elif msg["operation"] == "sell":
+            self.sell(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+        else:
+            self._logger.error(f"Operation should be buy or sell in command: {msg}")
 
     def on_trades_fx(self, msg):
         self._logger.debug(f"On trades fx. msg={msg}")
@@ -125,7 +138,7 @@ class WebQuikBroker:
         """
         # Successful transaction should look like this:
         # {"msgid":21009,"request":1,"status":3,"ordernum":5736932911,"datetime":"2021-03-08 22:05:35","text":"(161) Заявка N 5736932911 зарегистрирована. Удовлетворено 1"}
-        self._logger.info(f"Got msg {msg}")
+        self._logger.info(f"Got msg: {msg}")
 
     def test(self):
         msgdict = {
