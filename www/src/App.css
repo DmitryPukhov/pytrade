@@ -1,5 +1,5 @@
 .App {
-  text-align: center;
+  text-align: left;
 }
 
 .App-logo {
@@ -12,17 +12,6 @@
     animation: App-logo-spin infinite 20s linear;
   }
 }
-/* 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-} */
 
 .App-link {
   color: #61dafb;
@@ -39,49 +28,52 @@
 
 html, body { 
   height: 100%;
-  /* color:#5a5900; */
-
   color:#5a5900;
-  
   background-color:rgb(254, 255, 244);
-
-  /* color:rgb(58, 51, 1); */
 }
 .App-header {
-  /* text-align: center; */
   justify-content: center;
   font-family: cursive, sans-serif;
   font-size:2em;
   font-weight: bold;
   padding: 20px;
-  background-color:rgb(252, 251, 216);
+  background-color: rgb(222 220 131)
 }
 
 header {
-  text-align: center;
+  text-align: center; 
   font-weight: bold;
 }
-/* 
+
 Main{
   display: flex;
-} */
 
-.price-chart, .trade-account {
-  margin-top:1em;
+}
+.panel{
+  margin:0.5em;
+  padding:0.5em 1.5em 0.5em 1.5em;
+  border-style: dotted;
+  border-width: 1px;
+  background-color:rgb(252, 251, 216);
+}
+.panel header{
+  padding-bottom:0.7em;
 }
 
-.trade-account{
-}
-.trade-account ul {
-}
 .trade-account li{
   list-style-type:none;
 }
-/* label {
-  padding:0.5em;
-} */
+
 input {
   margin:0.5em
 }
+button {
+  margin:0.2em;
+  margin-left: 1em;
+  padding: 0.2em 1em 0.2em 1em;
+  background-color:#5a5900;
+  color: #f5e8b0;
+  border-radius: 15%;
 
+}
 

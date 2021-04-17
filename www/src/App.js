@@ -5,6 +5,7 @@ import Stomp from 'stompjs'
 import PriceChart from './pricechart/PriceChart.js';
 import TradeAccount from './broker/TradeAccount.js';
 import Orders from './broker/Orders.js';
+import StockLimits from './broker/StockLimits.js';
 import BuySell from './broker/BuySell';
 
 import React,{Component} from 'react'
@@ -16,8 +17,9 @@ class App extends React.Component {
   constructor(props)  {
     super(props);
     this.priceChart = React.createRef();
-    this.tradeAcount = React.createRef();
+    this.tradeAccount = React.createRef();
     this.orders = React.createRef();
+    this.stockLimits = React.createRef();
     this.buySell = React.createRef();
     // Initialize stomp
     this.stompConfig = stompConfig;
@@ -42,7 +44,8 @@ class App extends React.Component {
       console.log('Connected');
       // Call child components' handlers
       this.priceChart.current.onConnect.bind(this.priceChart.current)();
-      this.tradeAcount.current.onConnect.bind(this.tradeAcount.current)();
+      this.tradeAccount.current.onConnect.bind(this.tradeAccount.current)();
+      this.stockLimits.current.onConnect.bind(this.stockLimits.current)();
   }
 
   onError(e){
@@ -55,10 +58,11 @@ class App extends React.Component {
           <div className="App">
             <header className="App-header">Pytrade dev tools</header>
             <main>
-              <TradeAccount ref={this.tradeAcount} stompClient={this.stompClient}></TradeAccount>
-              <Orders ref={this.orders} stompClient={this.stompClient}></Orders>
-              <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell>
+              <TradeAccount ref={this.tradeAccount} stompClient={this.stompClient}></TradeAccount>
+              <StockLimits ref={this.stockLimits} stompClient={this.stompClient}></StockLimits>
+
               <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
+              <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell> 
 
             </main>
 
