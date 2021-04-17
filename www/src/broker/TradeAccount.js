@@ -54,7 +54,7 @@ class TradeAccount extends Component{
 
         var lst = Array.from(this.state.tradeAccounts.values());
         return (
-        <div className="trd">
+        <div className="trd" class="panel">
             <header>Accounts</header>
             <ul className="acc-list">
             {Array.from(lst).map(v=> <li>{v.trdacc}</li>)}

@@ -1,3 +1,4 @@
+import './pricechart.css'
 import React,{Component} from 'react'
 import {stompConfig} from '../stompConfig'
 import Stomp from 'stompjs'
@@ -82,11 +83,11 @@ class PriceChart extends Component{
 
     render() {
         return (
-        <div className="price-chart">
-                <div className="last-candle">
+        <div class="panel price-chart">
+                <div class="last-candle">
                 Last candle: {this.state.lastCandle.d}, price: {this.state.lastCandle.c}
                 </div>
-                <div className='price-chart'>
+                <div class='price-chart'>
                     <Plot className='plot' ref = {this.plotly}   data={this.state.data} layout={this.state.layout}/>
                 </div>
           </div>

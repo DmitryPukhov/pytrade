@@ -105,23 +105,23 @@ class WebQuikBroker:
     def on_orders(self, msg):
         # Information about my orders
         self._logger.debug(f"On orders. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=msg)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=str(msg))
 
     def on_trades(self, msg):
         self._logger.debug(f"On trades. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADES, body=msg)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADES, body=str(msg))
 
     def on_money_limits(self, msg):
         self._logger.debug(f"On money limits. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.MONEY_LIMITS, body=msg)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.MONEY_LIMITS, body=str(msg))
 
     def on_stock_limits(self, msg):
         self._logger.debug(f"On stock limits. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMITS, body=msg)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMITS, body=str(msg))
 
     def on_limit_received(self, msg):
         self._logger.debug(f"Limit has received. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMIT, body=msg)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMIT, body=str(msg))
 
     def subscribe_broker(self, subscriber):
         """
