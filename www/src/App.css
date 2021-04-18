@@ -53,16 +53,33 @@ Main{
   margin:0.5em;
   padding:0.5em 1.5em 0.5em 1.5em;
   border-style: dotted;
-  border-width: 1px;
+  border-width: thin;
   background-color:rgb(252, 251, 216);
   border-radius: 5px;
 }
 .panel header{
   padding-bottom:0.7em;
 }
+table {
+  border-spacing: 0;
+  border-top-style:dotted;
+  border-top-width:thin;
+}
+th, td {
+  border-color: #5a5900;
+  border-style: dotted;
+  /* border-left-style: none;
+  border-right-style: none;
+  border-top-style:none; */
+  border-width: thin;
+  padding: 0.2em 1em 0.2em 1em;
+}
 
 .trade-account li{
   list-style-type:none;
+}
+ul{
+  padding-inline-start: 0px;
 }
 
 input {
