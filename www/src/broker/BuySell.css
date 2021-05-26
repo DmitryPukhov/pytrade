@@ -1,0 +1,21 @@
+/* 
+.buysell .asset{
+    padding:0.5em;
+}  */
+ 
+.buysell input{
+    width:3em;
+}
+.buysell label{
+    display:inline-block;
+    margin-right:0.2em;
+}
+.buysell .param{
+    text-align: right;
+}
+.buysell .buttons{
+    text-align:right;
+}
+
+
+
