@@ -9,8 +9,8 @@ from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
 from Strategy import Strategy
 
-
 # from cfg.Config import Config
+from interop.BrokerInterop import BrokerInterop
 from interop.FeedInterop import FeedInterop
 
 
@@ -32,25 +32,24 @@ class App:
 
         # Feed2Csv just receive price and level2 for single configured asset and write to data folder
         feed = WebQuikFeed(self._connector)
+        broker = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
+                               trade_account=config["trade_account"])
         if config["is_interop"]:
-            self._feed_interop = FeedInterop(feed = feed, rabbit_host=config["rabbit_host"])
+            self._logger.info("Configuring interop mpde")
+            rabbit_host = config["rabbit_host"]
+            self._feed_interop = FeedInterop(feed=feed, rabbit_host=rabbit_host)
+            self._broker_interop = BrokerInterop(broker = broker, rabbit_host=rabbit_host)
         # self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
 
-        # Broker is not implemented, just a stub.
-        #web_quik_broker = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
-        #                                 trade_account=config["trade_account"], rabbit_host=config["rabbit_host"])
-
         # Create feed, subscribe events
-        # Todo: bring the brokeer back
-        web_quik_broker = None
-        self._strategy = Strategy(feed, web_quik_broker, config["sec_class"], config["sec_code"])
+        self._strategy = Strategy(feed, broker, config["sec_class"], config["sec_code"])
 
     def _load_config(self):
         """
         Load config respecting the order: defaults, app.yaml, environment vars
         """
         # Defaults
-        default_cfg_path="cfg/app-defaults.yaml"
+        default_cfg_path = "cfg/app-defaults.yaml"
         with open("cfg/app-defaults.yaml", "r") as appdefaults:
             config = yaml.safe_load(appdefaults)
 
@@ -60,7 +59,8 @@ class App:
             with open(cfg_path) as app:
                 config.update(yaml.safe_load(app))
         else:
-            sys.exit(f"Config {cfg_path} not found. Please copy cfg/app-defaults.yaml to {cfg_path} and update connection info there.")
+            sys.exit(
+                f"Config {cfg_path} not found. Please copy cfg/app-defaults.yaml to {cfg_path} and update connection info there.")
 
         config.update(os.environ)
         return config

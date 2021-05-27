@@ -1,57 +1,124 @@
+import json
 import logging
-from datetime import datetime
-
-import pika
-from connector.quik.MsgId import MsgId
+from threading import Thread
+from pika import BlockingConnection, ConnectionParameters
 from connector.quik.QueueName import QueueName
+from connector.quik.WebQuikBroker import WebQuikBroker
 
 
 class BrokerInterop:
     """
-    Get data from broker and publish it to rabbitmq for interop with external systems
-    Get order messages from rabbit and send them to a broker
+    Broker facade for QuikConnector. Holds account info, can  make orders.
+    Supports only simple buy/sell at the moment
+    Todo: add different types of orders: stop, market ...
     """
 
-    def __init__(self, feed, rabbit_host: str):
+    def __init__(self, broker: WebQuikBroker, rabbit_host: str):
         self._logger = logging.getLogger(__name__)
-        self._feed = feed
+        self._broker = broker
+        self._rabbit_host = rabbit_host
+        self.client_code = self._broker.client_code
+        self.trade_account = self._broker.trade_account
+        self._broker = broker
+        self._broker.subscribe_broker(self)
 
-        # Subscribe to feed
-        self.callbacks = {
-                          #MsgId.QUOTES: self._on_quotes,
-                          MsgId.GRAPH: self._on_candle,
-                          #MsgId.LEVEL2: self._on_level2,
-                          }
-        self._feed.subscribe(self.callbacks)
-
-        # Init rabbitmq connection
-        self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
+        # Init rabbit mq
+        self._logger.info(f"Init rabbit connection to {rabbit_host}")
+        self._rabbit_connection = BlockingConnection(ConnectionParameters(rabbit_host))
+        # self._rabbit_connection = pika.connection.Connection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()
-        for q in [QueueName.CANDLES]:
+        for q in [QueueName.TRADE_ACCOUNT,
+                  QueueName.ORDERS,
+                  QueueName.TRADES,
+                  QueueName.MONEY_LIMITS,
+                  QueueName.STOCK_LIMITS
+                  ]:
             self._logger.info(f"Declaring rabbit queue {q}")
             self._rabbit_channel.queue_declare(queue=q, durable=True)
 
-    def _on_candle(self, data: dict):
-        """
-        Receive ohlc data and transfer to rabbit mq for interop
-        :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01
-        10:02:00","o":22649,"c":22647,"h":22649,"l":22646,"v":1889}]}} :return:
-        """
-        self._logger.debug('Got feed: %s', data)
+        # Subscribe to buy/sell events in new thread because pika consumes synchronously only
+        self._consumer_rabbit_connection = None
+        self._consumer_rabbit_channel = None
+        Thread(target=self.listen_commands).start()
 
-        # Todo: get rid of nested check
-        for asset_str in data['graph'].keys():
-            # Each asset in data['graph']
-            (asset_class, asset_code) = self._connector.asset2tuple(asset_str)
-            if self._feed_subscribers[(asset_class, asset_code)] is not None:
-                asset_data = data['graph'][asset_str]
-                for ohlcv in asset_data:
-                    # Each ohlcv for this asset
-                    # dt = datetime.fromisoformat(ohlcv['d'])
-                    # o = ohlcv['o']
-                    # h = ohlcv['h']
-                    # l_ = ohlcv['l']
-                    # c = ohlcv['c']
-                    # v = ohlcv['v']
-                    # Send the candle to rabbitmq
-                    self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
+        self._logger.info("Initialized")
+
+    def listen_commands(self):
+        """
+        Consuming buy/sell commands from rabbit
+        """
+        self._consumer_rabbit_connection = BlockingConnection(ConnectionParameters(self._rabbit_host))
+        self._consumer_rabbit_channel = self._consumer_rabbit_connection.channel()
+
+        self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
+        self._consumer_rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
+        self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
+        self._consumer_rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell,
+                                                    consumer_tag="WebQuikBroker")
+        self._consumer_rabbit_channel.start_consuming()
+
+    def on_order_answer(self, msg):
+        self._logger.info(f"Got msg: {msg}")
+
+    def on_cmd_buysell(self, channel, method_frame, header_frame, rawmsg):
+        self._logger.info(f"Got buy/sell command. msg={rawmsg}")
+        msg = json.loads(rawmsg)
+        if msg["operation"] == "buy":
+            self._broker.buy(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+        elif msg["operation"] == "sell":
+            self._broker.sell(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+        else:
+            self._logger.error(f"Operation should be buy or sell in command: {msg}")
+
+    def on_trades_fx(self, msg):
+        self._logger.debug(f"On trades fx. msg={msg}")
+
+    def on_trade_accounts(self, msg):
+        # Information about my account. Usually one for stocks, one for futures.
+        # {"msgid":21022,"trdacc":"NL0011100043","firmid":"NC0011100000","classList":["QJSIM"],"mainMarginClasses":["QJSIM"],"limitsInLots":0,"limitKinds":["0","1","2"]}
+        # Just push the message to rabbitmq
+        self._logger.debug(f"On trade accounts. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADE_ACCOUNT, body=str(msg))
+
+    def on_orders(self, msg):
+        # Information about my orders
+        self._logger.debug(f"On orders. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=str(msg))
+
+    def on_trades(self, msg):
+        self._logger.debug(f"On trades. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADES, body=str(msg))
+
+    def on_money_limits(self, msg):
+        self._logger.debug(f"On money limits. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.MONEY_LIMITS, body=str(msg))
+
+    def on_stock_limits(self, msg):
+        self._logger.debug(f"On stock limits. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMITS, body=str(msg))
+
+    def on_limit_received(self, msg):
+        self._logger.debug(f"Limit has received. msg={msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMIT, body=str(msg))
+
+    def subscribe_broker(self, subscriber):
+        """
+        Subscribe to broker events - trades, account etc.
+        :param subscriber broker class, inherited from broker'
+        """
+        # Register given feed callback
+        self._broker_subscribers.add(subscriber)
+
+    def on_trans_reply(self, msg: str):
+        """
+        Responce to my order
+        ToDo: add order to history if successful
+        """
+        self._logger.info(f"Got msg: {msg}")
+
+    def on_heartbeat(self):
+        """
+        Heartbeating reaction
+        """
+        for subscriber in self._broker_subscribers:
+            subscriber.on_heartbeat()
