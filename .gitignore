@@ -1,3 +1,9 @@
+
+# Config files
+/pytrade/cfg/app.yaml
+/pytrade/cfg/log.cfg
+
+# Project and logs
 .vscode
 logs
 # Idea

@@ -1,5 +1,6 @@
 import logging.config
 import os
+import sys
 from threading import Thread
 import yaml
 
@@ -18,10 +19,8 @@ class App:
     """
 
     def __init__(self):
-        # Config set up. Environment overrides app.yaml
-        with open("cfg/app.yaml", "r") as f:
-            config = yaml.safe_load(f)
-            config.update(os.environ)
+        # Load config respecting the order: defaults, app.yaml, environment vars
+        config = self._load_config()
 
         # Logger set up
         self._init_logger(config["log_dir"])
@@ -42,13 +41,35 @@ class App:
         # Todo: support making orders
         self._strategy = Strategy(web_quik_feed, web_quik_broker, config["sec_class"], config["sec_code"])
 
+    def _load_config(self):
+        """
+        Load config respecting the order: defaults, app.yaml, environment vars
+        """
+        # Defaults
+        default_cfg_path="cfg/app-defaults.yaml"
+        with open("cfg/app-defaults.yaml", "r") as appdefaults:
+            config = yaml.safe_load(appdefaults)
+
+        # Custom config, should contain account information
+        cfg_path = "cfg/app.yaml"
+        if os.path.exists(cfg_path):
+            with open(cfg_path) as app:
+                config.update(yaml.safe_load(app))
+        else:
+            sys.exit(f"Config {cfg_path} not found. Please copy cfg/app-defaults.yaml to {cfg_path} and update connection info there.")
+
+        config.update(os.environ)
+        return config
+
     def _init_logger(self, logdir):
         # Ensure logging directory exists
         os.makedirs(logdir, exist_ok=True)
-        cfgpath = "cfg/logging.cfg"
-        logging.config.fileConfig(cfgpath)
-        self._logger = logging.getLogger(__name__)
-        self._logger.info(f"Logging configured from {cfgpath}")
+        cfgpaths = ["cfg/log-defaults.cfg", "cfg/log.cfg"]
+        for cfgpath in cfgpaths:
+            if os.path.exists(cfgpath):
+                logging.config.fileConfig(cfgpath)
+                self._logger = logging.getLogger(__name__)
+                self._logger.info(f"Logging configured from {cfgpath}")
 
     def main(self):
         """

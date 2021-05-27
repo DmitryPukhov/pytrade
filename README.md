@@ -10,7 +10,8 @@ Demo or live account with web quik https://arqatech.com/en/products/quik/termina
 I use demo account at [junior.webquik.ru](https://junior.webquik.ru/).
 
 ## Setting up
-Configure Configure **conn**, **account**, **passwd**  and **client_code** variables in **pytrade/cfg/app.yaml** variables in **Config.py**
+Copy **pytrade/cfg/app-defaults.yaml** to a new local config **pytrade/cfg/app.yaml**
+Configure **conn**, **account**, **passwd**  and **client_code** variables in your **pytrade/cfg/app.yaml**
 
 ## Running
 docker-compose up
