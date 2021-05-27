@@ -18,4 +18,10 @@ docker-compose up
 
 Open dev tools in browser: [http://localhost:3000](http://localhost:3000)
 Price chart should appear in real time.
+
+## Using in your robots
+### Option 1. Interop mode (default). 
+If *is_interop=True* in app.yaml, feed sends the prices to rabbit mq. Broker also receives buy/sell orders from rabbit. Any external system can read prices and make orders through rabbit.
+### Option 2. Python library mode. 
+*is_interop=False* in app.yaml, no integration through rabbitmq, just use pytrade as a lib from other python app. 
  
