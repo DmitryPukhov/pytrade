@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import datetime
 import pika
 from websocket import ABNF
@@ -13,13 +14,13 @@ class WebQuikFeed:
     Parse feed messages from web quik.
     """
 
-    def __init__(self, connector: WebQuikConnector, rabbit_host: str):
+    def __init__(self, connector: WebQuikConnector):
         self._logger = logging.getLogger(__name__)
         self._connector = connector
         self._connector.feed = self
 
         # Subscribers for data feed. {(class_code, sec_code): callback_func}
-        self._feed_subscribers = {}
+        self._feed_subscribers = defaultdict(list)
         self.callbacks = {MsgId.TRADE_SESSION_OPEN: self.on_trade_session_open,
                           MsgId.QUOTES: self._on_quotes,
                           MsgId.GRAPH: self._on_candle,
@@ -27,12 +28,12 @@ class WebQuikFeed:
                           }
         self._connector.subscribe(self.callbacks)
 
-        # Init rabbitmq connection
-        self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
-        self._rabbit_channel = self._rabbit_connection.channel()
-        for q in [QueueName.CANDLES]:
-            self._logger.info(f"Declaring rabbit queue {q}")
-            self._rabbit_channel.queue_declare(queue=q, durable=True)
+        # # Init rabbitmq connection
+        # self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
+        # self._rabbit_channel = self._rabbit_connection.channel()
+        # for q in [QueueName.CANDLES]:
+        #     self._logger.info(f"Declaring rabbit queue {q}")
+        #     self._rabbit_channel.queue_declare(queue=q, durable=True)
 
     def on_message(self, msg):
         callback = self.callbacks.get(msg['msgid'])
@@ -67,7 +68,7 @@ class WebQuikFeed:
         key = (class_code, sec_code)
 
         # Register given feed callback
-        self._feed_subscribers[key] = subscriber
+        self._feed_subscribers[key].append(subscriber)
 
         # Request this feed from server
         if self._connector.status == WebQuikConnector.Status.CONNECTED:
@@ -77,7 +78,9 @@ class WebQuikFeed:
         """
         On start, trade session is opened. Now we can request data and set orders
         """
-        for (class_code, sec_code), value in self._feed_subscribers.items():
+        for (class_code, sec_code) in self._feed_subscribers:
+            if class_code == "*" and sec_code=="*":
+                continue
             self._request_feed(class_code, sec_code)
 
     def _on_quotes(self, data: dict):
@@ -93,8 +96,9 @@ class WebQuikFeed:
                 ask = data['dataResult'][asset_str]['offer']
                 last = data['dataResult'][asset_str].get('last')
                 # Send to subscriber
-                self._feed_subscribers[(asset_class, asset_code)] \
-                    .on_quote(asset_class, asset_code, datetime.now(), bid, ask, last)
+                for subscriber in self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[
+                    ("*", "*")]:
+                    subscriber.on_quote(asset_class, asset_code, datetime.now(), bid, ask, last)
 
     def _on_candle(self, data: dict):
         """
@@ -108,22 +112,23 @@ class WebQuikFeed:
         for asset_str in data['graph'].keys():
             # Each asset in data['graph']
             (asset_class, asset_code) = self._connector.asset2tuple(asset_str)
-            if self._feed_subscribers[(asset_class, asset_code)] is not None:
-                asset_data = data['graph'][asset_str]
-                for ohlcv in asset_data:
-                    # Each ohlcv for this asset
-                    dt = datetime.fromisoformat(ohlcv['d'])
-                    o = ohlcv['o']
-                    h = ohlcv['h']
-                    l_ = ohlcv['l']
-                    c = ohlcv['c']
-                    v = ohlcv['v']
-                    # Send the candle to rabbitmq
-                    self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
+            if (asset_class, asset_code) not in self._feed_subscribers:
+                continue
+            asset_data = data['graph'][asset_str]
+            for ohlcv in asset_data:
+                # Each ohlcv for this asset
+                dt = datetime.fromisoformat(ohlcv['d'])
+                o = ohlcv['o']
+                h = ohlcv['h']
+                l_ = ohlcv['l']
+                c = ohlcv['c']
+                v = ohlcv['v']
+                # Send the candle to rabbitmq
+                # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
 
-                    # Send data to subscribers
-                    self._feed_subscribers[(asset_class, asset_code)] \
-                        .on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
+                # Send data to subscribers
+                for subscriber in  self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]:
+                    subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
 
     def _on_level2(self, data: dict):
         """

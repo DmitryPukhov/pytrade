@@ -146,7 +146,7 @@ class WebQuikConnector:
             msg_callback(msg)
 
         # Call external callback: broker or feed subscriber
-        for func in self._subscribers.setdefault(msgid, []):
+        for func in self._subscribers[msgid]:
             func(msg)
 
     @staticmethod

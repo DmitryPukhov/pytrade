@@ -36,7 +36,7 @@ class Strategy:
         # print("Exit")
         # _thread.interrupt_main()
 
-    def on_candle(asset_class, asset_code, dt, o, h, l_, c, v):
-        ...
+    def on_candle(self,asset_class, asset_code, dt, o, h, l_, c, v):
+        return
 
 

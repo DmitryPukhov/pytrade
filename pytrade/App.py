@@ -11,6 +11,7 @@ from Strategy import Strategy
 
 
 # from cfg.Config import Config
+from interop.FeedInterop import FeedInterop
 
 
 class App:
@@ -30,16 +31,19 @@ class App:
         self._connector = WebQuikConnector(conn=config["conn"], passwd=config["passwd"], account=config["account"])
 
         # Feed2Csv just receive price and level2 for single configured asset and write to data folder
-        web_quik_feed = WebQuikFeed(self._connector, rabbit_host=config["rabbit_host"])
+        feed = WebQuikFeed(self._connector)
+        if config["is_interop"]:
+            self._feed_interop = FeedInterop(feed = feed, rabbit_host=config["rabbit_host"])
         # self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
 
         # Broker is not implemented, just a stub.
-        web_quik_broker = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
-                                        trade_account=config["trade_account"], rabbit_host=config["rabbit_host"])
+        #web_quik_broker = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
+        #                                 trade_account=config["trade_account"], rabbit_host=config["rabbit_host"])
 
         # Create feed, subscribe events
-        # Todo: support making orders
-        self._strategy = Strategy(web_quik_feed, web_quik_broker, config["sec_class"], config["sec_code"])
+        # Todo: bring the brokeer back
+        web_quik_broker = None
+        self._strategy = Strategy(feed, web_quik_broker, config["sec_class"], config["sec_code"])
 
     def _load_config(self):
         """
