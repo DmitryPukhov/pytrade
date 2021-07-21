@@ -1,3 +1,4 @@
+import itertools
 import logging
 from collections import defaultdict
 from datetime import datetime
@@ -79,7 +80,7 @@ class WebQuikFeed:
         On start, trade session is opened. Now we can request data and set orders
         """
         for (class_code, sec_code) in self._feed_subscribers:
-            if class_code == "*" and sec_code=="*":
+            if class_code == "*" and sec_code == "*":
                 continue
             self._request_feed(class_code, sec_code)
 
@@ -88,7 +89,7 @@ class WebQuikFeed:
         Bid/ask spreads callback
         Msg sample: {"msgid":21011,"dataResult":{"CETS\u00A6BYNRUBTODTOM":{"bid":0, "ask":10, last":0,"lastchange":...
         """
-        self._logger.debug('Got bid/ask: %s', data)
+        self._logger.debug('Got bid/ask quotes: %s', data)
         for asset_str in data['dataResult'].keys():
             (asset_class, asset_code) = self._connector.asset2tuple(asset_str)
             if (asset_class, asset_code) in self._feed_subscribers.keys():
@@ -106,7 +107,7 @@ class WebQuikFeed:
         :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01
         10:02:00","o":22649,"c":22647,"h":22649,"l":22646,"v":1889}]}} :return:
         """
-        self._logger.debug('Got feed: %s', data)
+        self._logger.debug('Got candles: %s', data)
 
         # Todo: get rid of nested check
         for asset_str in data['graph'].keys():
@@ -127,7 +128,8 @@ class WebQuikFeed:
                 # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
 
                 # Send data to subscribers
-                for subscriber in  self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]:
+                subscribers = self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]
+                for subscriber in filter(lambda  s: s.on_candle, subscribers):
                     subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
 
     def _on_level2(self, data: dict):
@@ -143,27 +145,30 @@ class WebQuikFeed:
         # Todo: get rid of nested check
         for asset_str in data['quotes']:
             asset_class, asset_code = self._connector.asset2tuple(asset_str)
-            if self._feed_subscribers[(asset_class, asset_code)] is not None:
-                # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
-                level2_quik: dict = data['quotes'][asset_str]['lines']
-                level2 = {}
-                for key in level2_quik.keys():
-                    price = int(key)
-                    bid = level2_quik[key]['b']
-                    if bid == 0:
-                        bid = None
-                    ask = level2_quik[key]['s']
-                    if ask == 0:
-                        ask = None
-                    level2[price] = (bid, ask)
+            if (asset_class, asset_code) not in self._feed_subscribers:
+                continue
+            # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
+            level2_quik: dict = data['quotes'][asset_str]['lines']
+            level2 = {}
+            for key in level2_quik.keys():
+                price = int(key)
+                bid = level2_quik[key]['b']
+                if bid == 0:
+                    bid = None
+                ask = level2_quik[key]['s']
+                if ask == 0:
+                    ask = None
+                level2[price] = (bid, ask)
 
-                    # If somebody subscribed to level2 of this asset, send her this data.
-                self._feed_subscribers[(asset_class, asset_code)].on_level2(asset_class, asset_code, datetime.now(),
-                                                                            level2)
+            # If somebody subscribed to level2 of this asset, send her this data.
+            subscribers = self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]
+            for subscriber in filter(lambda s: s.on_level2, subscribers):
+                subscriber.on_level2(asset_class, asset_code, datetime.now(), level2)
 
     def on_heartbeat(self):
         """
         Pass heartbeat event to feed consumer
         """
-        for subscriber in self._feed_subscribers.values():
+        # Get only subscribers who has on_heartbeat callback
+        for subscriber in filter(lambda s: s.on_heartbeat, itertools.chain.from_iterable(self._feed_subscribers.values())):
             subscriber.on_heartbeat()

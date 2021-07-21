@@ -2,19 +2,23 @@ import logging
 import datetime as dt
 import os
 from pandas import DataFrame
-from feed.BaseFeed import BaseFeed
+from feed.Feed import Feed
 
 
-class Feed2Csv(BaseFeed):
+class Feed2Csv:
     """
     Receive ticks and level 2 and persist to csv
     """
-    def __init__(self, feed, sec_class, sec_code, data_dir='./data'):
+
+    def __init__(self, feed: Feed, sec_class: str, sec_code: str, data_dir: str = './data'):
         self._logger = logging.getLogger(__name__)
-        super().__init__(feed, sec_class, sec_code)
+        self._feed = feed
+        self._sec_class = sec_class
+        self._sec_code = sec_code
+        self._feed.subscribe_feed(self._sec_class, self._sec_code, self)
 
         # Dump periodically
-        self._write_interval = dt.timedelta(seconds=10)
+        self._write_interval = dt.timedelta(seconds=30)
         self._data_dir = data_dir
         self._logger.info("Candles and level2 will be persisted each %s to %s", self._write_interval, self._data_dir)
         self._last_write_time = dt.datetime.min
@@ -28,6 +32,8 @@ class Feed2Csv(BaseFeed):
         if not df.empty:
             df.groupby([df.index.get_level_values(0).dayofyear, df.index.get_level_values(1)]).apply(
                 lambda df_daily: self._write_ticker_by_day(df_daily, data_type))
+        else:
+            self._logger.debug(f"{data_type} is empty, nothing to write")
 
     def _write_ticker_by_day(self, df: DataFrame, data_type):
         """
@@ -43,17 +49,19 @@ class Feed2Csv(BaseFeed):
         self._logger.debug("Writing %s to %s", data_type, os.path.abspath(file_path))
         # Write to file
         df.to_csv(file_path, mode='a', header=False)
+        #df.to_csv(file_path, mode='w', header=False)
 
     def on_heartbeat(self):
         """
         Heartbeat received
         """
+        self._logger.debug("Got heartbeat")
         # If time interval elapsed, write dataframe to csv
-        if (dt.datetime.now() - self._last_write_time) > self._write_interval:
-            self.write(self.candles, 'candles')
-            self.write(self.level2, 'level2')
-
-            self._last_write_time = dt.datetime.now()
-
-        # Store current time as last heart beat
-        super().on_heartbeat()
+        if (dt.datetime.now() - self._last_write_time) < self._write_interval:
+            return
+        self._logger.debug("Writing to csv")
+        self._last_write_time = dt.datetime.now()
+        self.write(self._feed.candles, 'candles')
+        self.write(self._feed.level2, 'level2')
+        self.write(self._feed.quotes, 'quotes')
+        self._last_write_time = dt.datetime.now()

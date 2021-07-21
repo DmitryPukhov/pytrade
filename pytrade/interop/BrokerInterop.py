@@ -13,14 +13,14 @@ class BrokerInterop:
     Todo: add different types of orders: stop, market ...
     """
 
-    def __init__(self, broker: WebQuikBroker, rabbit_host: str):
+    def __init__(self, broker_adapter: WebQuikBroker, rabbit_host: str):
         self._logger = logging.getLogger(__name__)
-        self._broker = broker
+        self._broker_adapter = broker_adapter
         self._rabbit_host = rabbit_host
-        self.client_code = self._broker.client_code
-        self.trade_account = self._broker.trade_account
-        self._broker = broker
-        self._broker.subscribe_broker(self)
+        self.client_code = self._broker_adapter.client_code
+        self.trade_account = self._broker_adapter.trade_account
+        self._broker_adapter = broker_adapter
+        self._broker_adapter.subscribe_broker(self)
 
         # Init rabbit mq
         self._logger.info(f"Init rabbit connection to {rabbit_host}")
@@ -64,9 +64,9 @@ class BrokerInterop:
         self._logger.info(f"Got buy/sell command. msg={rawmsg}")
         msg = json.loads(rawmsg)
         if msg["operation"] == "buy":
-            self._broker.buy(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+            self._broker_adapter.buy(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
         elif msg["operation"] == "sell":
-            self._broker.sell(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
+            self._broker_adapter.sell(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
         else:
             self._logger.error(f"Operation should be buy or sell in command: {msg}")
 

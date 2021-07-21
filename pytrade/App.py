@@ -1,15 +1,17 @@
 import logging.config
 import os
 import sys
-from threading import Thread
 import yaml
 
+from strategy.Strategy import Strategy
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
-from Strategy import Strategy
+
 
 # from cfg.Config import Config
+from feed.Feed import Feed
+from feed.Feed2Csv import Feed2Csv
 from interop.BrokerInterop import BrokerInterop
 from interop.FeedInterop import FeedInterop
 
@@ -27,22 +29,33 @@ class App:
         self._init_logger(config["log_dir"])
         self._logger.info("Initializing the App")
 
-        # Quik connector
+        # Quik connector, single instance used by all brokers and feeds
         self._connector = WebQuikConnector(conn=config["conn"], passwd=config["passwd"], account=config["account"])
-
-        # Feed2Csv just receive price and level2 for single configured asset and write to data folder
-        feed = WebQuikFeed(self._connector)
-        broker = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
+        # Adapters for broker and feed
+        feed_adapter = WebQuikFeed(self._connector)
+        broker_adapter = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
                                trade_account=config["trade_account"])
+        # Feed
+        feed = Feed(feed_adapter, config["sec_class"], config["sec_code"])
+
         if config["is_interop"]:
-            self._logger.info("Configuring interop mpde")
-            rabbit_host = config["rabbit_host"]
-            self._feed_interop = FeedInterop(feed=feed, rabbit_host=rabbit_host)
-            self._broker_interop = BrokerInterop(broker = broker, rabbit_host=rabbit_host)
-        # self._feed = Feed2Csv(web_quik_feed, config.sec_class, config.sec_code)
+            self._init_interop(config, feed_adapter, broker_adapter)
+        if config["is_feed2csv"]:
+            self._feed2csv = Feed2Csv(feed, config["sec_class"], config["sec_code"])
 
         # Create feed, subscribe events
-        self._strategy = Strategy(feed, broker, config["sec_class"], config["sec_code"])
+        self._strategy = Strategy(feed, broker_adapter, config)
+        #self._init_strategy(config['strategy'], config, feed, broker_adapter)
+        #self._strategy = eval('strategyconfig['strategy'])(feed, broker_adapter, config)
+        #self._strategy = Strategy(feed, broker_adapter, config["sec_class"], config["sec_code"])
+
+
+
+    def _init_interop(self, config, feed_adapter, broker_adapter):
+        self._logger.info("Configuring interop mode")
+        rabbit_host = config["rabbit_host"]
+        self._feed_interop = FeedInterop(feed_adapter=feed_adapter, rabbit_host=rabbit_host)
+        self._broker_interop = BrokerInterop(broker_adapter=broker_adapter, rabbit_host=rabbit_host)
 
     def _load_config(self):
         """
@@ -79,8 +92,10 @@ class App:
         """
         Application entry point
         """
-        # Start strategy
-        Thread(target=self._strategy.run).start()
+
+        # Start strategy in a separate thread
+        # Thread(target=self._strategy.run).start()
+        # Run connector in current thread. This single connector instance is used across the whole app
         self._connector.run()
 
 

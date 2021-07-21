@@ -19,4 +19,6 @@ sec_class: 'QJSIM'
 sec_code: 'SBER'
 
 # Interop mode, sends feed and receives orders from external systems through rabbitmq
-is_interop: True
+is_interop: False
+# Gather feed to csv or not
+is_feed2csv: False

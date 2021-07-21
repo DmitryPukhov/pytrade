@@ -22,7 +22,8 @@ class WebQuikConnector:
         DISCONNECTING = 3
         DISCONNECTED = 4
 
-    _HEARTBEAT_SECONDS = 3
+    _HEARTBEAT_SECONDS = 5
+    _TIMEOUT_SECONDS = 4
 
     def __init__(self, conn, account, passwd):
         self._logger = logging.getLogger(__name__)
