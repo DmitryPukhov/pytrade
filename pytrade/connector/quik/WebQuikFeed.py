@@ -129,7 +129,7 @@ class WebQuikFeed:
 
                 # Send data to subscribers
                 subscribers = self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]
-                for subscriber in filter(lambda  s: s.on_candle, subscribers):
+                for subscriber in set(filter(lambda  s: s.on_candle, subscribers)):
                     subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
 
     def _on_level2(self, data: dict):

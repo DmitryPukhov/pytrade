@@ -26,16 +26,16 @@ class Strategy1:
         Receive a new candle event from feed. self.feed.candles dataframe contains all candles including this one.
         """
         # Skip if too early for a new processing cycle
-        #self._logger.debug(f"Got new candle, asset: {(asset_class, asset_code)}, dt={dt},o={o},h={h},l={l_},c={c}")
+        self._logger.debug(f"Got new candle, asset: {(asset_class, asset_code)}, dt={dt},o={o},h={h},l={l_},c={c}")
         if (datetime.now() - self._last_processed_time) < self._process_interval:
             return
         self._logger.debug(f"Processing new data. Previous: {self._last_processed_time}, now: {datetime.now()}, interval {self._process_interval} elapsed")
         self._logger.debug(f"Accumulated candles: {len(self._feed.candles)}, quotes:{len(self._feed.quotes)}, level2: {len(self._feed.level2)}")
         self._last_processed_time = datetime.now()
 
-    def on_heartbeat(self):
-        self._logger.debug(f"Got heartbeat")
-        return
+    # def on_heartbeat(self):
+    #     self._logger.debug(f"Got heartbeat")
+    #     return
 
     # def on_quote(self, asset_class, asset_code, dt, bid, ask, last):
     #     """

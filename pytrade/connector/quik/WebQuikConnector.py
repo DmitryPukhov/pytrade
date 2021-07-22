@@ -206,4 +206,4 @@ class WebQuikConnector:
         Add message callback. Broker and feeder subscribe themselves to messages using this func.
         """
         for msgid in callbacks:
-            self._subscribers.setdefault(msgid, []).append(callbacks[msgid])
+            self._subscribers.setdefault(msgid,[]).append(callbacks[msgid])

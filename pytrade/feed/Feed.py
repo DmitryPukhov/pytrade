@@ -1,7 +1,6 @@
 import itertools
 import logging
 from collections import defaultdict
-
 import pandas as pd
 from datetime import *
 pd.options.display.width = 0
@@ -78,10 +77,12 @@ class Feed:
         self.candles.at[(pd.to_datetime(dt), ticker),
                         ['open', 'high', 'low', 'close', 'volume']] = [o, h, l_, c, v]
         self._logger.debug("Received candle, time=%s, ticker: %s, data:%s", dt, ticker, [o, h, l_, c, v])
-        # Send data to subscribers
-        for subscriber in self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]:
-            if subscriber.on_candle:
-                subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
+
+        #  data to subscribers
+        subscribers = self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]
+        push_list = set(filter(lambda s: callable(getattr(s, 'on_candle', None)), subscribers))
+        for subscriber in push_list:
+            subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
         self.last_tick_time = dt.datetime.now()
 
     def on_level2(self, asset_class, asset_code, dt, level2: dict):
@@ -96,18 +97,24 @@ class Feed:
             ask_vol = level2[price][1]
             self.level2.at[(pd.to_datetime(dt), ticker, price), ['bid_vol', 'ask_vol']] = [bid_vol, ask_vol]
             self.last_tick_time = datetime.now()
+
         # Push level2 event up
-        for subscriber in self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]:
-            if subscriber.on_level2:
-                subscriber.on_level2(asset_class, asset_code, datetime, level2)
+        subscribers = self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]
+        push_list = set(filter(lambda s: callable(getattr(s, 'on_level2', None)), subscribers))
+        for subscriber in push_list:
+            subscriber.on_level2(asset_class, asset_code, datetime, level2)
 
     def on_heartbeat(self):
         """
         Heartbeat received
         """
         self._logger.debug("Got heartbeat event")
-        for subscriber in list(itertools.chain.from_iterable(self._subscribers.values())):
-            if subscriber.on_heartbeat:
-                subscriber.on_heartbeat()
+        subscribers = set(itertools.chain.from_iterable(self._subscribers.values()))
+        push_list = set(filter(lambda s: callable(getattr(s,"on_heartbeat", None)), subscribers))
+        for subscriber in push_list:
+            subscriber.on_heartbeat()
 
         self.last_heartbeat = datetime.now()
+    
+    def _subscribers_of(self, asset, event):
+        filter(lambda s: hasattr(s,event), set(self._subscribers[asset] + self._subscribers[("*", "*")]))
