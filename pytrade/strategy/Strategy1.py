@@ -5,7 +5,7 @@ import pandas as pd
 pd.options.display.width = 0
 
 
-class Strategy:
+class Strategy1:
 
     def __init__(self, feed, broker, config):
         self._logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ class Strategy:
     def on_heartbeat(self):
         self._logger.debug(f"Got heartbeat")
         return
+
     # def on_quote(self, asset_class, asset_code, dt, bid, ask, last):
     #     """
     #     Got a new quote. self.feed.quotes contains all quotes including this one

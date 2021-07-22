@@ -22,3 +22,6 @@ sec_code: 'SBER'
 is_interop: False
 # Gather feed to csv or not
 is_feed2csv: False
+
+# Strategy to run
+strategy: Strategy1

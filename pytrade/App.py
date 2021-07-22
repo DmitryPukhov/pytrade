@@ -3,13 +3,10 @@ import os
 import sys
 import yaml
 
-from strategy.Strategy import Strategy
+from strategy.Strategy1 import *
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
-
-
-# from cfg.Config import Config
 from feed.Feed import Feed
 from feed.Feed2Csv import Feed2Csv
 from interop.BrokerInterop import BrokerInterop
@@ -34,7 +31,7 @@ class App:
         # Adapters for broker and feed
         feed_adapter = WebQuikFeed(self._connector)
         broker_adapter = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
-                               trade_account=config["trade_account"])
+                                       trade_account=config["trade_account"])
         # Feed
         feed = Feed(feed_adapter, config["sec_class"], config["sec_code"])
 
@@ -43,13 +40,13 @@ class App:
         if config["is_feed2csv"]:
             self._feed2csv = Feed2Csv(feed, config["sec_class"], config["sec_code"])
 
-        # Create feed, subscribe events
-        self._strategy = Strategy(feed, broker_adapter, config)
-        #self._init_strategy(config['strategy'], config, feed, broker_adapter)
-        #self._strategy = eval('strategyconfig['strategy'])(feed, broker_adapter, config)
-        #self._strategy = Strategy(feed, broker_adapter, config["sec_class"], config["sec_code"])
+        # Dynamically create the strategy by the name from config
+        self._init_strategy(config,feed, broker_adapter)
 
-
+    def _init_strategy(self, config, feed, broker):
+        name = config['strategy']
+        self._logger.info(f"Creating strategy {name}")
+        self._strategy = globals()[name](feed, broker, config)
 
     def _init_interop(self, config, feed_adapter, broker_adapter):
         self._logger.info("Configuring interop mode")
@@ -63,7 +60,7 @@ class App:
         """
         # Defaults
         default_cfg_path = "cfg/app-defaults.yaml"
-        with open("cfg/app-defaults.yaml", "r") as appdefaults:
+        with open(default_cfg_path, "r") as appdefaults:
             config = yaml.safe_load(appdefaults)
 
         # Custom config, should contain account information
@@ -73,7 +70,8 @@ class App:
                 config.update(yaml.safe_load(app))
         else:
             sys.exit(
-                f"Config {cfg_path} not found. Please copy cfg/app-defaults.yaml to {cfg_path} and update connection info there.")
+                f"Config {cfg_path} not found. Please copy cfg/app-defaults.yaml to {cfg_path} "
+                f"and update connection info there.")
 
         config.update(os.environ)
         return config
