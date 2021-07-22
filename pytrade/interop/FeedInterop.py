@@ -11,9 +11,9 @@ class FeedInterop:
     Get data from feed and publish it to rabbitmq for interop with external systems
     """
 
-    def __init__(self, feed_adapter, rabbit_host: str):
+    def __init__(self, feed, rabbit_host: str):
         self._logger = logging.getLogger(__name__)
-        self._feed_adapter = feed_adapter
+        self._feed = feed
 
         # Subscribe to feed
         self.callbacks = {
@@ -21,7 +21,7 @@ class FeedInterop:
             MsgId.GRAPH: self.on_candle,
             # MsgId.LEVEL2: self._on_level2,
         }
-        self._feed_adapter.subscribe_feed("*", "*", self)
+        self._feed.subscribe_feed("*", "*", self)
 
         # Init rabbitmq connection
         self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))

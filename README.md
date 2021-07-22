@@ -16,12 +16,17 @@ Configure **conn**, **account**, **passwd**  and **client_code** variables in yo
 ## Running
 docker-compose up
 
-Open dev tools in browser: [http://localhost:3000](http://localhost:3000)
-Price chart should appear in real time.
+Open dev tools in browser: [http://localhost:3000](http://localhost:3000) - price chart should appear in real time.
+Open rabbitmq at [http://localhost:15672/](http://localhost:15672/), use rabbitmq default login and password: quest/quest
 
 ## Using in your robots
-### Option 1. Interop mode (default). 
-If *is_interop=True* in app.yaml, feed sends the prices to rabbit mq. Broker also receives buy/sell orders from rabbit. Any external system can read prices and make orders through rabbit.
-### Option 2. Python library mode. 
-*is_interop=False* in app.yaml, no integration through rabbitmq, just use pytrade as a lib from other python app. 
- 
+
+### Option 1. Single mode. 
+Only Python lives here, no integration with external systems.
+Set *is_interop: False*, in *app.yaml*. Add your strategy python class to strategy folder and set *strategy=<Your strategy class name>* in *app.yaml* Run and debug in your preferrable IDE using *App.py* entry point
+
+### Option 2. Interop mode - manage pytrade from external system
+Integration with external systems through rabbitmq If *is_interop: True* in app.yaml, pytrade sends the prices and receives buy/sell instructions to/from rabbit mq.  Any external system can read prices and make orders through rabbit. 
+
+## Capturing the Feed to file system
+Set *is_feed2csv: True* in *app.yaml* and pytrade will save all received data into *data* folder in csv format.

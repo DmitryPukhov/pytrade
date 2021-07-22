@@ -36,7 +36,7 @@ class App:
         feed = Feed(feed_adapter, config["sec_class"], config["sec_code"])
 
         if config["is_interop"]:
-            self._init_interop(config, feed_adapter, broker_adapter)
+            self._init_interop(config, feed, broker_adapter)
         if config["is_feed2csv"]:
             self._feed2csv = Feed2Csv(feed, config["sec_class"], config["sec_code"])
 
@@ -48,10 +48,10 @@ class App:
         self._logger.info(f"Creating strategy {name}")
         self._strategy = globals()[name](feed, broker, config)
 
-    def _init_interop(self, config, feed_adapter, broker_adapter):
+    def _init_interop(self, config, feed, broker_adapter):
         self._logger.info("Configuring interop mode")
         rabbit_host = config["rabbit_host"]
-        self._feed_interop = FeedInterop(feed_adapter=feed_adapter, rabbit_host=rabbit_host)
+        self._feed_interop = FeedInterop(feed=feed, rabbit_host=rabbit_host)
         self._broker_interop = BrokerInterop(broker_adapter=broker_adapter, rabbit_host=rabbit_host)
 
     def _load_config(self):
