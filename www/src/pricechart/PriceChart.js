@@ -41,21 +41,21 @@ class PriceChart extends Component{
     onCandle(msg){
         console.log('Got message: '+msg);
         var ohlcv = JSON.parse(msg.body.replace(/'/g, '"'))
-        ohlcv.millis = Date.parse(ohlcv.d);
+        ohlcv.millis = Date.parse(ohlcv.dt);
         // Update last candle state
         if(ohlcv == null){
             // If badly parsed
             this.setState({lastCandle: {d:null,c:null}});
             return;
         } else {
-            this.setState({lastCandle: {d:ohlcv.d, c:ohlcv.c}});
+            this.setState({lastCandle: {d:ohlcv.dt, c:ohlcv.c}});
         }
 
         var candles = this.state.candles;
 
         // If time is the same, remove last candle. A new one will be added.
-        var lastTime = candles.map(c => c.d)[candles.length-1];
-        if(ohlcv.d === lastTime) {
+        var lastTime = candles.map(c => c.dt)[candles.length-1];
+        if(ohlcv.dt === lastTime) {
             candles.pop();
         }
 
@@ -66,7 +66,7 @@ class PriceChart extends Component{
         });
 
         // Update the state for chart
-        this.state.data[0].x = candles.map(c=>c.d);
+        this.state.data[0].x = candles.map(c=>c.dt);
         this.state.data[0].y = candles.map(c=>c.c);
         var tmpData = this.state.data
 
@@ -85,7 +85,7 @@ class PriceChart extends Component{
         return (
         <div class="panel price-chart">
                 <div class="last-candle">
-                Last candle: {this.state.lastCandle.d}, price: {this.state.lastCandle.c}
+                Last candle: {this.state.lastCandle.dt}, price: {this.state.lastCandle.c}
                 </div>
                 <div class='price-chart'>
                     <Plot className='plot' ref = {this.plotly}   data={this.state.data} layout={this.state.layout}/>

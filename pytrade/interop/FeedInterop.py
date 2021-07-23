@@ -42,5 +42,6 @@ class FeedInterop:
         self._logger.debug(f'Got feed: {asset}, {ohlcv}')
         # ohlcv = {'d': str(dt), 'o': ohlcv, 'h': h, 'l': l_, 'c': c, 'v': asset}
         # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
-        asset_ohlcv = {'d': str(ohlcv.dt), 'o': ohlcv.o, 'h': ohlcv.h, 'l': ohlcv.l, 'c': ohlcv.c, 'v': str(asset)}
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
+        asset_ohlcv = {'asset': str(asset), 'dt': str(ohlcv.dt), 'o': ohlcv.o, 'h': ohlcv.h, 'l': ohlcv.l, 'c': ohlcv.c,
+                       'v': ohlcv.v}
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(asset_ohlcv))
