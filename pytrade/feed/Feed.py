@@ -3,6 +3,12 @@ import logging
 from collections import defaultdict
 import pandas as pd
 from datetime import *
+
+from model.Asset import Asset
+from model.Level2 import Level2
+from model.Ohlcv import Ohlcv
+from model.Quote import Quote
+
 pd.options.display.width = 0
 
 
@@ -35,74 +41,58 @@ class Feed:
         self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
         self.level2.set_index(['datetime', 'ticker', 'price'], inplace=True)
 
-    def subscribe_feed(self, class_code, sec_code, subscriber):
+    def subscribe_feed(self, asset: Asset, subscriber):
         """
         Add subsciber for feed data
-        :param class_code security class, example 'SPBFUT'
-        :param sec_code code of security, example 'RIU8'
-        :param subscriber subscriber class, inherited from base feed
         """
         # Register given feed callback
-        key = (class_code, sec_code)
-
-        # Register given feed callback
-        self._subscribers[key].append(subscriber)
-        self._feed_adapter.subscribe_feed(self.sec_class, self.sec_code, self)
+        self._subscribers[asset].append(subscriber)
+        self._feed_adapter.subscribe_feed(asset, self)
 
     @staticmethod
     def _ticker_of(asset_class, asset_code):
         return asset_class + '/' + asset_code
 
-    def on_quote(self, asset_class, asset_code, dt, bid, ask, last):
+    def on_quote(self, asset: Asset, quote: Quote):
         """
         New bid/ask received
         """
         self.last_tick_time = datetime.now()
-        ticker = self._ticker_of(asset_class, asset_code)
-        self._logger.debug("Received quote, time=%s, ticker: %s, bid:%s, ask:%s, last:%s",
-                           dt, ticker, bid, ask, last)
+        self._logger.debug(f"Received quote, asset: {asset}, quote: {quote}")
         # Set to quotes pandas dataframe
-        self.quotes.at[(pd.to_datetime(dt), ticker), ['bid', 'ask', 'last']] = [bid, ask, last]
+        self.quotes.at[(quote.dt, asset), ['bid', 'ask', 'last']] = [quote.bid, quote.ask, quote.last]
         # Push the quote up to subscribers
-        for subscriber in self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]:
-            if subscriber.on_quote:
-                subscriber.on_quote(asset_class, asset_code, dt, bid, ask, last)
+        subscribers = self._subscribers[asset] + self._subscribers[Asset("*", "*")]
+        push_list = set(filter(lambda s: callable(getattr(s, 'on_quote', None)), subscribers))
+        for subscriber in push_list:
+            subscriber.on_quote(asset, quote)
 
-    def on_candle(self, asset_class, asset_code, dt, o, h, l_, c, v):
+    def on_candle(self, asset: Asset, ohlcv: Ohlcv):
         """
         New ohlc data received
         """
         # Add ohlc to data
-        ticker = self._ticker_of(asset_class, asset_code)
-        self.candles.at[(pd.to_datetime(dt), ticker),
-                        ['open', 'high', 'low', 'close', 'volume']] = [o, h, l_, c, v]
-        self._logger.debug("Received candle, time=%s, ticker: %s, data:%s", dt, ticker, [o, h, l_, c, v])
+        self.candles.at[(ohlcv.dt, asset),
+                        ['open', 'high', 'low', 'close', 'volume']] = [ohlcv.o, ohlcv.h, ohlcv.l, ohlcv.c, ohlcv.v]
+        self._logger.debug(f"Received candle for asset {asset}, candle: {ohlcv}")
 
-        #  data to subscribers
-        subscribers = self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]
+        #  Push data to subscribers
+        subscribers = self._subscribers[asset] + self._subscribers[Asset("*", "*")]
         push_list = set(filter(lambda s: callable(getattr(s, 'on_candle', None)), subscribers))
         for subscriber in push_list:
-            subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
-        self.last_tick_time = dt.datetime.now()
+            subscriber.on_candle(asset,ohlcv)
+        self.last_tick_time = datetime.now()
 
-    def on_level2(self, asset_class, asset_code, dt, level2: dict):
+    def on_level2(self, asset: Asset, level2: Level2):
         """
         New level2 data received
         """
-        self._logger.debug("Received level2 for time = %s. %s/%s. Data: %s", datetime, asset_class, asset_code, level2)
-        ticker = self._ticker_of(asset_class, asset_code)
-        # Record new level2 to level2 pandas dataframe
-        for price in level2.keys():
-            bid_vol = level2[price][0]
-            ask_vol = level2[price][1]
-            self.level2.at[(pd.to_datetime(dt), ticker, price), ['bid_vol', 'ask_vol']] = [bid_vol, ask_vol]
-            self.last_tick_time = datetime.now()
-
+        self._logger.debug(f"Received level2 for asset {asset}, level2 {level2}")
         # Push level2 event up
-        subscribers = self._subscribers[(asset_class, asset_code)] + self._subscribers[("*", "*")]
+        subscribers = self._subscribers[asset] + self._subscribers[Asset("*", "*")]
         push_list = set(filter(lambda s: callable(getattr(s, 'on_level2', None)), subscribers))
         for subscriber in push_list:
-            subscriber.on_level2(asset_class, asset_code, datetime, level2)
+            subscriber.on_level2(asset, level2)
 
     def on_heartbeat(self):
         """
@@ -110,11 +100,11 @@ class Feed:
         """
         self._logger.debug("Got heartbeat event")
         subscribers = set(itertools.chain.from_iterable(self._subscribers.values()))
-        push_list = set(filter(lambda s: callable(getattr(s,"on_heartbeat", None)), subscribers))
+        push_list = set(filter(lambda s: callable(getattr(s, "on_heartbeat", None)), subscribers))
         for subscriber in push_list:
             subscriber.on_heartbeat()
 
         self.last_heartbeat = datetime.now()
-    
+
     def _subscribers_of(self, asset, event):
-        filter(lambda s: hasattr(s,event), set(self._subscribers[asset] + self._subscribers[("*", "*")]))
+        filter(lambda s: hasattr(s, event), set(self._subscribers[asset] + self._subscribers[("*", "*")]))

@@ -22,8 +22,8 @@ class WebQuikConnector:
         DISCONNECTING = 3
         DISCONNECTED = 4
 
-    _HEARTBEAT_SECONDS = 5
-    _TIMEOUT_SECONDS = 4
+    _HEARTBEAT_SECONDS = 10
+    _TIMEOUT_SECONDS = 9
 
     def __init__(self, conn, account, passwd):
         self._logger = logging.getLogger(__name__)
@@ -149,22 +149,6 @@ class WebQuikConnector:
         # Call external callback: broker or feed subscriber
         for func in self._subscribers[msgid]:
             func(msg)
-
-    @staticmethod
-    def asset2tuple(s):
-        """
-        Converts quik asset string to tuple(class, code)
-        """
-        # Split s and return first 2 parts - class and code
-        parts: list = s.split("¦")
-        return tuple([parts[0], parts[1]])
-
-    @staticmethod
-    def tuple2asset(t: tuple):
-        """
-        Converts asset tuple(class, code) to quik compatible string class¦code
-        """
-        return "%s¦%s" % (t[0], t[1])
 
     def _on_error(self, error):
         self._logger.error('Got error msg %s: %s', type(error).__name__, str(error))

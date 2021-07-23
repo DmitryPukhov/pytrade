@@ -1,12 +1,19 @@
 import itertools
 import logging
+import re
 from collections import defaultdict
 from datetime import datetime
-import pika
-from websocket import ABNF
+from typing import Optional
+
 from connector.quik.MsgId import MsgId
-from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikConnector import WebQuikConnector
+from model.Asset import Asset
+from model.Level2 import Level2
+from model.Level2Item import Level2Item
+from model.Ohlcv import Ohlcv
+from model.Quote import Quote
+
+from websocket import ABNF
 
 
 class WebQuikFeed:
@@ -14,6 +21,7 @@ class WebQuikFeed:
     Feed facade. Provides feed info from web quik connector to consumer.
     Parse feed messages from web quik.
     """
+    any_asset = Asset("*", "*")
 
     def __init__(self, connector: WebQuikConnector):
         self._logger = logging.getLogger(__name__)
@@ -36,53 +44,99 @@ class WebQuikFeed:
         #     self._logger.info(f"Declaring rabbit queue {q}")
         #     self._rabbit_channel.queue_declare(queue=q, durable=True)
 
+    @staticmethod
+    def _ticker_of(asset: Asset) -> Optional[str]:
+        if not asset:
+            return None
+        return '|'.join([str(asset.class_code), str(asset.sec_code)])
+
+    @staticmethod
+    def _asset_of(quik_str: str) -> Optional[Asset]:
+        # Example: "QJSIM¦SBER¦0", we need to streap trailing \0
+        if not quik_str:
+            return None
+        # groups = re.search('([\\w\\d]+(?=\\|))*\\|*([\\w\\d]+)?', quik_str)
+        # groups = re.match('(?P<class_code>[\\w\\d]+(?=\\|))?\\|?(?P<sec_code>[\\w\\d]+)', quik_str)
+        groups = re.match('(?P<class_code>[\\w\\d]+(?=¦))?¦?(?P<sec_code>[\\w\\d]+)', quik_str)
+        asset = Asset(groups["class_code"], groups["sec_code"])
+        return asset
+
+    @staticmethod
+    def _ohlcv_of(quik_ohlcv: dict) -> Ohlcv:
+        return Ohlcv(
+            datetime.fromisoformat(quik_ohlcv['d']), quik_ohlcv['o'], quik_ohlcv['h'], quik_ohlcv['l'], quik_ohlcv['c'],
+            quik_ohlcv['v'])
+
+    @staticmethod
+    def _quote_of(quik_quote: dict) -> Quote:
+        return Quote(
+            dt=datetime.now(),
+            bid=quik_quote.get('bid'),
+            ask=quik_quote.get('offer'),
+            last=quik_quote.get('last'),
+            last_change=quik_quote.get('lastchange'))
+
+    @staticmethod
+    def _level2_of(dt, quik_level2: dict):
+        # {'22806': {'b': 234, 's': 0, 'by': 0, 'sy': 0}
+        level2 = Level2(dt)
+        for key in quik_level2.keys():
+            # Parse price, bid volume, ask volume
+            price = float(key)
+            bid_vol = quik_level2[key]['b']
+            if bid_vol == 0:
+                bid_vol = None
+            ask_vol = quik_level2[key]['s']
+            if ask_vol == 0:
+                ask_vol = None
+            # Add price, bid vol, ask vol to level 2 prices
+            level2.items.add(Level2Item(price, bid_vol, ask_vol))
+
+        return level2
+
     def on_message(self, msg):
         callback = self.callbacks.get(msg['msgid'])
         if callback:
             callback(msg)
 
-    def _request_feed(self, class_code, sec_code):
+    def _request_feed(self, asset: Asset):
         """
         Request candles and level2 data from quik
         """
         # Request quotes
-        self._logger.info('Requesting quotes for %s\\%s', class_code, sec_code)
-        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (MsgId.CREATE_DATASOURCE, class_code, sec_code, 0)
+        self._logger.info(f"Requesting quotes for asset {asset}")
+        msg = '{"msgid":%s,"c":"%s","s":"%s","p":%s}' % (
+            MsgId.CREATE_DATASOURCE, asset.class_code, asset.sec_code, 0)
         msg = msg.encode()
         self._logger.debug('Sending msg: %s' % msg)
         self._connector.websocket_app.send(msg)
         # Request level2 data
-        self._logger.info('Requesting level2 data for %s\\%s', class_code, sec_code)
+        self._logger.info(f"Requesting level2 data for asset {asset}")
         depth = 30
         msg = '{"msgid":%s,"c":"%s","s":"%s","depth":%s}' % \
-              (MsgId.CREATE_LEVEL2_DATASOURCE, class_code, sec_code, depth)
+              (MsgId.CREATE_LEVEL2_DATASOURCE, asset.class_code, asset.sec_code, depth)
         self._logger.debug('Sending msg: %s' % msg)
         self._connector.websocket_app.send(msg, opcode=ABNF.OPCODE_BINARY)
 
-    def subscribe_feed(self, class_code, sec_code, subscriber):
+    def subscribe_feed(self, asset: Asset, subscriber):
         """
         Add subsciber for feed data
-        :param class_code security class, example 'SPBFUT'
-        :param sec_code code of security, example 'RIU8'
-        :param subscriber subscriber class, inherited from base feed
         """
-        key = (class_code, sec_code)
 
         # Register given feed callback
-        self._feed_subscribers[key].append(subscriber)
+        self._feed_subscribers[asset].append(subscriber)
 
         # Request this feed from server
         if self._connector.status == WebQuikConnector.Status.CONNECTED:
-            self._request_feed(class_code, sec_code)
+            self._request_feed(asset)
 
     def on_trade_session_open(self, msg):
         """
         On start, trade session is opened. Now we can request data and set orders
         """
-        for (class_code, sec_code) in self._feed_subscribers:
-            if class_code == "*" and sec_code == "*":
-                continue
-            self._request_feed(class_code, sec_code)
+        self._logger.debug(f"Trade session opened. Requesting feeds for subscribers: {self._feed_subscribers}")
+        for asset in filter(lambda a: a != WebQuikFeed.any_asset, self._feed_subscribers):
+            self._request_feed(asset)
 
     def _on_quotes(self, data: dict):
         """
@@ -90,16 +144,13 @@ class WebQuikFeed:
         Msg sample: {"msgid":21011,"dataResult":{"CETS\u00A6BYNRUBTODTOM":{"bid":0, "ask":10, last":0,"lastchange":...
         """
         self._logger.debug('Got bid/ask quotes: %s', data)
-        for asset_str in data['dataResult'].keys():
-            (asset_class, asset_code) = self._connector.asset2tuple(asset_str)
-            if (asset_class, asset_code) in self._feed_subscribers.keys():
-                bid = data['dataResult'][asset_str]['bid']
-                ask = data['dataResult'][asset_str]['offer']
-                last = data['dataResult'][asset_str].get('last')
+        for quik_asset in data['dataResult'].keys():
+            asset = WebQuikFeed._asset_of(quik_asset)
+            if asset in self._feed_subscribers.keys():
+                quote = WebQuikFeed._quote_of(data['dataResult'][quik_asset])
                 # Send to subscriber
-                for subscriber in self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[
-                    ("*", "*")]:
-                    subscriber.on_quote(asset_class, asset_code, datetime.now(), bid, ask, last)
+                for subscriber in self._feed_subscribers[asset] + self._feed_subscribers[WebQuikFeed.any_asset]:
+                    subscriber.on_quote(asset, quote)
 
     def _on_candle(self, data: dict):
         """
@@ -112,25 +163,22 @@ class WebQuikFeed:
         # Todo: get rid of nested check
         for asset_str in data['graph'].keys():
             # Each asset in data['graph']
-            (asset_class, asset_code) = self._connector.asset2tuple(asset_str)
-            if (asset_class, asset_code) not in self._feed_subscribers:
+            asset = WebQuikFeed._asset_of(asset_str)
+
+            if asset not in self._feed_subscribers:
                 continue
             asset_data = data['graph'][asset_str]
-            for ohlcv in asset_data:
+            for quik_ohlcv in asset_data:
                 # Each ohlcv for this asset
-                dt = datetime.fromisoformat(ohlcv['d'])
-                o = ohlcv['o']
-                h = ohlcv['h']
-                l_ = ohlcv['l']
-                c = ohlcv['c']
-                v = ohlcv['v']
+                ohlcv = WebQuikFeed._ohlcv_of(quik_ohlcv)
+
                 # Send the candle to rabbitmq
                 # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
 
                 # Send data to subscribers
-                subscribers = self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]
-                for subscriber in set(filter(lambda  s: s.on_candle, subscribers)):
-                    subscriber.on_candle(asset_class, asset_code, dt, o, h, l_, c, v)
+                subscribers = self._feed_subscribers[asset] + self._feed_subscribers[self.any_asset]
+                for subscriber in set(filter(lambda s: s.on_candle, subscribers)):
+                    subscriber.on_candle(asset, ohlcv)
 
     def _on_level2(self, data: dict):
         """
@@ -144,8 +192,9 @@ class WebQuikFeed:
         # Go through all assets in level2 message
         # Todo: get rid of nested check
         for asset_str in data['quotes']:
-            asset_class, asset_code = self._connector.asset2tuple(asset_str)
-            if (asset_class, asset_code) not in self._feed_subscribers:
+            # asset_class, asset_code = self._connector.asset2tuple(asset_str)
+            asset = WebQuikFeed._asset_of(asset_str)
+            if asset not in self._feed_subscribers:
                 continue
             # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
             level2_quik: dict = data['quotes'][asset_str]['lines']
@@ -161,14 +210,15 @@ class WebQuikFeed:
                 level2[price] = (bid, ask)
 
             # If somebody subscribed to level2 of this asset, send her this data.
-            subscribers = self._feed_subscribers[(asset_class, asset_code)] + self._feed_subscribers[("*", "*")]
+            subscribers = self._feed_subscribers[asset] + self._feed_subscribers[WebQuikFeed.any_asset]
             for subscriber in filter(lambda s: s.on_level2, subscribers):
-                subscriber.on_level2(asset_class, asset_code, datetime.now(), level2)
+                subscriber.on_level2(asset, level2)
 
     def on_heartbeat(self):
         """
         Pass heartbeat event to feed consumer
         """
         # Get only subscribers who has on_heartbeat callback
-        for subscriber in filter(lambda s: s.on_heartbeat, itertools.chain.from_iterable(self._feed_subscribers.values())):
+        for subscriber in filter(lambda s: s.on_heartbeat,
+                                 itertools.chain.from_iterable(self._feed_subscribers.values())):
             subscriber.on_heartbeat()
