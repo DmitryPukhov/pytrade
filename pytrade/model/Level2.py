@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List
 
 from sortedcontainers import SortedList
+
+from model.Level2Item import Level2Item
 
 
 @dataclass
@@ -11,4 +14,8 @@ class Level2:
     """
     dt: datetime
     # Level 2 items price: bid or ask, sorted by price
-    items: SortedList = SortedList(key=lambda item: item.price)
+    items: List[Level2Item] = SortedList(key=lambda item: item.price)
+
+    @staticmethod
+    def of(dt: datetime, items: List[Level2Item]):
+        return Level2(dt, SortedList(items, key=lambda item: item.price))

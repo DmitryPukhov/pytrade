@@ -4,3 +4,4 @@ pandas~=1.2.1
 pika~=1.2.0
 sortedcontainers~=2.4.0
 yaml~=0.2.5
+numpy~=1.19.2

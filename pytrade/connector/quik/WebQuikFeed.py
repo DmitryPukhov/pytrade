@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
+from sortedcontainers import SortedList
+
 from connector.quik.MsgId import MsgId
 from connector.quik.WebQuikConnector import WebQuikConnector
 from model.Asset import Asset
@@ -198,7 +200,10 @@ class WebQuikFeed:
                 continue
             # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
             level2_quik: dict = data['quotes'][asset_str]['lines']
-            level2 = {}
+            #level2 = {}
+            #Level2(datetime.now())
+            # Fill in level2 items
+            items = []
             for key in level2_quik.keys():
                 price = int(key)
                 bid = level2_quik[key]['b']
@@ -207,7 +212,9 @@ class WebQuikFeed:
                 ask = level2_quik[key]['s']
                 if ask == 0:
                     ask = None
-                level2[price] = (bid, ask)
+                items.append(Level2Item(price, bid, ask))
+
+            level2 = Level2.of(datetime.now(), items)
 
             # If somebody subscribed to level2 of this asset, send her this data.
             subscribers = self._feed_subscribers[asset] + self._feed_subscribers[WebQuikFeed.any_asset]

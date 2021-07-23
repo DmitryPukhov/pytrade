@@ -38,7 +38,7 @@ class App:
         if config["is_interop"]:
             self._init_interop(config, feed, broker_adapter)
         if config["is_feed2csv"]:
-            self._feed2csv = Feed2Csv(feed, config["sec_class"], config["sec_code"])
+            self._feed2csv = Feed2Csv(feed)
 
         # Dynamically create the strategy by the name from config
         self._init_strategy(config,feed, broker_adapter)

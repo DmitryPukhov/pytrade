@@ -1,8 +1,10 @@
 import itertools
+import json
 import logging
 from collections import defaultdict
-import pandas as pd
 from datetime import *
+import numpy as np
+import pandas as pd
 
 from model.Asset import Asset
 from model.Level2 import Level2
@@ -39,6 +41,7 @@ class Feed:
         self.candles.set_index(['datetime', 'ticker'], inplace=True)
         self.quotes.set_index(['datetime', 'ticker'], inplace=True)
         self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
+        #self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'items'])
         self.level2.set_index(['datetime', 'ticker', 'price'], inplace=True)
 
     def subscribe_feed(self, asset: Asset, subscriber):
@@ -60,7 +63,7 @@ class Feed:
         self.last_tick_time = datetime.now()
         self._logger.debug(f"Received quote, asset: {asset}, quote: {quote}")
         # Set to quotes pandas dataframe
-        self.quotes.at[(quote.dt, asset), ['bid', 'ask', 'last']] = [quote.bid, quote.ask, quote.last]
+        self.quotes.at[(quote.dt, str(asset)), ['bid', 'ask', 'last']] = [quote.bid, quote.ask, quote.last]
         # Push the quote up to subscribers
         subscribers = self._subscribers[asset] + self._subscribers[Asset("*", "*")]
         push_list = set(filter(lambda s: callable(getattr(s, 'on_quote', None)), subscribers))
@@ -72,7 +75,7 @@ class Feed:
         New ohlc data received
         """
         # Add ohlc to data
-        self.candles.at[(ohlcv.dt, asset),
+        self.candles.at[(ohlcv.dt, str(asset)),
                         ['open', 'high', 'low', 'close', 'volume']] = [ohlcv.o, ohlcv.h, ohlcv.l, ohlcv.c, ohlcv.v]
         self._logger.debug(f"Received candle for asset {asset}, candle: {ohlcv}")
 
@@ -88,6 +91,9 @@ class Feed:
         New level2 data received
         """
         self._logger.debug(f"Received level2 for asset {asset}, level2 {level2}")
+        # Add new level2 records to dataframe
+        for item in level2.items:
+            self.level2.at[(level2.dt, str(asset), item.price),['bid_vol', 'ask_vol']] = [item.bid_vol, item.ask_vol]
         # Push level2 event up
         subscribers = self._subscribers[asset] + self._subscribers[Asset("*", "*")]
         push_list = set(filter(lambda s: callable(getattr(s, 'on_level2', None)), subscribers))
@@ -105,6 +111,3 @@ class Feed:
             subscriber.on_heartbeat()
 
         self.last_heartbeat = datetime.now()
-
-    def _subscribers_of(self, asset, event):
-        filter(lambda s: hasattr(s, event), set(self._subscribers[asset] + self._subscribers[("*", "*")]))
