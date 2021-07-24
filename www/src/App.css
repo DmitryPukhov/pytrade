@@ -59,20 +59,29 @@ Main{
   grid-column-end: 5; */
 }
 .trdacc.panel {
-  grid-row: 2;
+  grid-row-start: 2;
+  grid-row-end:4
   /* width:fit-content; */
 }
+
 .stocklimits.panel{
-  grid-row: 2;
+  grid-row-start:2;
+  grid-row-end:4;
+  grid-column:2;
   /* width:fit-content; */
 }
 .pricechart.panel{
-  grid-row: 2;
+  grid-row-start: 2;
+  grid-row-end:4;
   /* width: auto; */
 }
-.buysell.panel{
+.orders.panel {
   grid-row: 2;
-  /* width:fit-content; */
+  grid-column:4
+}
+.buysell.panel{
+  grid-row: 3;
+  grid-column:4; 
 }
 
 .panel{

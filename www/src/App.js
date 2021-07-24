@@ -45,6 +45,7 @@ class App extends React.Component {
   onConnect(){
       console.log('Connected');
       // Call child components' handlers
+      this.orders.current.onConnect.bind(this.orders.current)();
       this.priceChart.current.onConnect.bind(this.priceChart.current)();
       this.tradeAccount.current.onConnect.bind(this.tradeAccount.current)();
       this.stockLimits.current.onConnect.bind(this.stockLimits.current)();
@@ -63,7 +64,7 @@ class App extends React.Component {
                 <RawMsg ref={this.rawMsg} stompClient={this.stompClient}></RawMsg>
                 <TradeAccount ref={this.tradeAccount} stompClient={this.stompClient}></TradeAccount>
                 <StockLimits ref={this.stockLimits} stompClient={this.stompClient}></StockLimits>
-
+                <Orders ref={this.orders} stompClient={this.stompClient}></Orders>
                 <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
                 <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell> 
             </main>
