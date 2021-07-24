@@ -134,11 +134,16 @@ class WebQuikConnector:
         Entry for message processing. Call specific processors for different messages.
         """
         strmsg = raw_msg.decode()
-        self._logger.debug('Got message %s', strmsg)
+        self._logger.debug('Got message %s', strmsg[:200])
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         msgid = msg['msgid']
-        self._logger.debug('Got message %s', msgid)
+        # Log orders response if not logged in logger.debug() before
+        if (not self._logger.isEnabledFor(logging.DEBUG)) \
+                and (msgid in {MsgId.ORDER_REPLY, MsgId.FX_ORDER_REPLY, MsgId.STOP_ORDER_REPLY,
+                               MsgId.CONDITIONAL_STOP_ORDER_REPLY, MsgId.LINKED_STOP_ORDER_REPLY,
+                               MsgId.REMOVE_ORDER_REPLY, MsgId.REMOVE_STOP_ORDER_REPLY, MsgId.SERVER_MSG}):
+            self._logger.info(f"Got message {msg}")
 
         # Call internal callback is set up
         msg_callback = self._callbacks.get(msgid)
@@ -190,4 +195,4 @@ class WebQuikConnector:
         Add message callback. Broker and feeder subscribe themselves to messages using this func.
         """
         for msgid in callbacks:
-            self._subscribers.setdefault(msgid,[]).append(callbacks[msgid])
+            self._subscribers.setdefault(msgid, []).append(callbacks[msgid])

@@ -38,7 +38,7 @@ class Broker:
         self._broker_adapter.buy(class_code, sec_code, price, quantity)
 
     def send_raw_msg(self, msg):
-        self._logger.debug(f"Got raw message for sending directly to underlying broker: {msg}")
+        self._logger.info(f"Sending raw message to broker: {msg}")
         self._broker_adapter.send_raw_msg(msg)
 
     def sell(self, class_code, sec_code, price, quantity):

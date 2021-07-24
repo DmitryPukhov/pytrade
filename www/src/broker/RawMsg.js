@@ -30,6 +30,7 @@ class RawMsg extends Component{
             "account": "NL0011100043",
             "stopprice": 215
         }
+        //rawMsg = {"msgid":12100,"clientcode":"10058","account":"NL0011100043", "number":"6059372033"}
         this.state={rawMsg: JSON.stringify(rawMsg)};
     }
 

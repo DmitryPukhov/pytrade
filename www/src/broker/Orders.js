@@ -12,7 +12,7 @@ class Orders extends Component{
         // Get stomp client for rabbit connection
         this.stompClient = props.stompClient;
         this.queueName='pytrade.broker.orders';
-        this.state={orders: new Set()};
+        this.state={orders: new Map()};
     }
 
     onConnect(){
@@ -28,7 +28,7 @@ class Orders extends Component{
         console.log('Got orders msg '+ msg.body)
         var orders = this.state.orders
         var msgData = JSON.parse(msg.body.replace(/'/g, '"'));
-        orders.add(msgData)
+        orders.set(msgData['number'],msgData)
         this.setState({orders: orders});
     }
 
