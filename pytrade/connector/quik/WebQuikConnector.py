@@ -46,7 +46,18 @@ class WebQuikConnector:
             MsgId.PIN_REQ: self._on_pin_req,
             MsgId.STATUS: self._on_status,
             MsgId.AUTH: self._on_auth,
-            MsgId.TRADE_SESSION_OPEN: self._on_trade_session_open
+            MsgId.TRADE_SESSION_OPEN: self._on_trade_session_open,
+
+            # Reply messages
+            MsgId.SERVER_MSG: self._on_msg_reply,
+            MsgId.REMOVE_STOP_ORDER_REPLY: self._on_msg_reply,
+            MsgId.REMOVE_ORDER_REPLY: self._on_msg_reply,
+            MsgId.ORDER_REPLY: self._on_msg_reply,
+            MsgId.STOP_ORDER_REPLY: self._on_msg_reply,
+            MsgId.LINKED_STOP_ORDER_REPLY: self._on_msg_reply,
+            MsgId.FX_ORDER_REPLY: self._on_msg_reply,
+            MsgId.CONDITIONAL_STOP_ORDER_REPLY: self._on_msg_reply,
+            MsgId.TRANS_REPLY: self._on_msg_reply,
         }
         # Broker and feed, subscribed to message id
         self._subscribers = {}
@@ -138,12 +149,6 @@ class WebQuikConnector:
         msg = json.loads(strmsg)
         # Find and execute callback function for this message
         msgid = msg['msgid']
-        # Log orders response if not logged in logger.debug() before
-        if (not self._logger.isEnabledFor(logging.DEBUG)) \
-                and (msgid in {MsgId.ORDER_REPLY, MsgId.FX_ORDER_REPLY, MsgId.STOP_ORDER_REPLY,
-                               MsgId.CONDITIONAL_STOP_ORDER_REPLY, MsgId.LINKED_STOP_ORDER_REPLY,
-                               MsgId.REMOVE_ORDER_REPLY, MsgId.REMOVE_STOP_ORDER_REPLY, MsgId.SERVER_MSG}):
-            self._logger.info(f"Got message {msg}")
 
         # Call internal callback is set up
         msg_callback = self._callbacks.get(msgid)
@@ -153,6 +158,10 @@ class WebQuikConnector:
 
         # Call external callback: broker or feed subscriber
         for func in self._subscribers[msgid]:
+            func(msg)
+
+    def _on_msg_reply(self, msg):
+        for func in self._subscribers[msg['msgid']]:
             func(msg)
 
     def _on_error(self, error):
