@@ -83,7 +83,7 @@ class PriceChart extends Component{
 
     render() {
         return (
-        <div class="panel price-chart">
+        <div class="pricechart panel">
                 <div class="last-candle">
                 Last candle: {this.state.lastCandle.dt}, price: {this.state.lastCandle.c}
                 </div>

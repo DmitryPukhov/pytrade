@@ -46,9 +46,35 @@ header {
 }
 
 Main{
-  display: flex;
+  display: grid;
+  /* grid-template-columns: 15% 15% 100% 15%;  */
 
 }
+.rawmsg.panel {
+  grid-row: 1;
+  grid-column-start:1;
+  grid-column-end: 5;
+  
+  /* grid-column-start:1;
+  grid-column-end: 5; */
+}
+.trdacc.panel {
+  grid-row: 2;
+  /* width:fit-content; */
+}
+.stocklimits.panel{
+  grid-row: 2;
+  /* width:fit-content; */
+}
+.pricechart.panel{
+  grid-row: 2;
+  /* width: auto; */
+}
+.buysell.panel{
+  grid-row: 2;
+  /* width:fit-content; */
+}
+
 .panel{
   margin:0.5em;
   padding:0.5em 1.5em 0.5em 1.5em;

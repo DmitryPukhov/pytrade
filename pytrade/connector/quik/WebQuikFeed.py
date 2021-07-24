@@ -4,9 +4,6 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-
-from sortedcontainers import SortedList
-
 from connector.quik.MsgId import MsgId
 from connector.quik.WebQuikConnector import WebQuikConnector
 from model.Asset import Asset

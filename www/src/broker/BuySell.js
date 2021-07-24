@@ -1,4 +1,4 @@
-import './BuySell.css'
+import './Broker.css'
 import React,{Component} from 'react'
 
 
@@ -40,7 +40,7 @@ class BuySell extends Component{
     render() {
 
         return (
-        <div className="buysell"  class="panel buysell">
+        <div className="buysell"  class="buysell panel">
             <header>Send order</header>
             <div class="asset">
                 <div class="param">

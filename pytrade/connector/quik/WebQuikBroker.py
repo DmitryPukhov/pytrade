@@ -1,11 +1,6 @@
 import json
 import logging
 import random
-from threading import Thread
-
-import pika
-
-from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.MsgId import MsgId
 
@@ -142,6 +137,10 @@ class WebQuikBroker:
         }
         msg = json.dumps(msgdict)
         return msg
+
+    def send_raw_msg(self, msg):
+        self._logger.debug(f"Sending raw msg: {msg}")
+        self._connector.send(msg)
 
     def buy(self, class_code, sec_code, price, quantity):
         """

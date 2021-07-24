@@ -40,7 +40,7 @@ class StockLimits extends Component{
     render() {
         var lst = Array.from(this.state.stockLimits.values());
         return (
-        <div className="stock-limits"  class="panel">
+        <div className="stocklimits"  class="stocklimits panel">
             <header>Stock limits</header>
             <table className="positions">
                 <tr>

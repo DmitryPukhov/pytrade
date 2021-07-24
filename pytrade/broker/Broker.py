@@ -29,15 +29,17 @@ class Broker:
             # todo: refactor to data classes instead of quik msg
             s.on_order_answer(msg)
 
-    def on_cmd_buysell(self, channel, method_frame, header_frame, rawmsg):
-        self._logger.info(f"Got buy/sell command. msg={rawmsg}")
-        msg = json.loads(rawmsg)
-        if msg["operation"] == "buy":
-            self._broker_adapter.buy(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
-        elif msg["operation"] == "sell":
-            self._broker_adapter.sell(msg['secClass'], msg['secCode'], msg['price'], msg['quantity'])
-        else:
-            self._logger.error(f"Operation should be buy or sell in command: {msg}")
+    def buy(self, class_code, sec_code, price, quantity):
+        self._logger.info(f"Got buy command. class_code:{class_code}, sec_code: {sec_code}, price: {price}, quantity: {quantity}")
+        self._broker_adapter.buy(class_code, sec_code, price, quantity)
+
+    def send_raw_msg(self, msg):
+        self._logger.debug(f"Got raw message for sending directly to underlying broker: {msg}")
+        self._broker_adapter.send_raw_msg(msg)
+
+    def sell(self, class_code, sec_code, price, quantity):
+        self._logger.info(f"Got sell command. class_code:{class_code}, sec_code: {sec_code}, price: {price}, quantity: {quantity}")
+        self._broker_adapter.ssell(class_code, sec_code, price, quantity)
 
     def on_trades_fx(self, msg):
         self._logger.debug(f"On trades fx. msg={msg}")

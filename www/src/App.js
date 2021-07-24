@@ -7,6 +7,7 @@ import TradeAccount from './broker/TradeAccount.js';
 import Orders from './broker/Orders.js';
 import StockLimits from './broker/StockLimits.js';
 import BuySell from './broker/BuySell';
+import RawMsg from './broker/RawMsg'
 
 import React,{Component} from 'react'
 
@@ -16,6 +17,7 @@ class App extends React.Component {
 
   constructor(props)  {
     super(props);
+    this.rawMsg = React.createRef()
     this.priceChart = React.createRef();
     this.tradeAccount = React.createRef();
     this.orders = React.createRef();
@@ -58,12 +60,12 @@ class App extends React.Component {
           <div className="App">
             <header className="App-header">Pytrade dev tools</header>
             <main>
-              <TradeAccount ref={this.tradeAccount} stompClient={this.stompClient}></TradeAccount>
-              <StockLimits ref={this.stockLimits} stompClient={this.stompClient}></StockLimits>
+                <RawMsg ref={this.rawMsg} stompClient={this.stompClient}></RawMsg>
+                <TradeAccount ref={this.tradeAccount} stompClient={this.stompClient}></TradeAccount>
+                <StockLimits ref={this.stockLimits} stompClient={this.stompClient}></StockLimits>
 
-              <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
-              <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell> 
-
+                <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
+                <BuySell ref = {this.buySell} stompClient={this.stompClient}></BuySell> 
             </main>
 
           </div>

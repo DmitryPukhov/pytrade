@@ -49,15 +49,33 @@ class BrokerInterop:
         self._consumer_rabbit_connection = BlockingConnection(ConnectionParameters(self._rabbit_host))
         self._consumer_rabbit_channel = self._consumer_rabbit_connection.channel()
 
-        self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
-        self._consumer_rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
-        self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
-        self._consumer_rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell,
-                                                    consumer_tag="WebQuikBroker")
+        # Listen buy/sell orders from external system
+        self._listen_queue(QueueName.CMD_BUYSELL, self.on_cmd_buysell)
+        self._listen_queue(QueueName.MSG_RAW, self.on_raw_msg)
+        # self._logger.info(f"Declaring rabbit queue {QueueName.CMD_BUYSELL}")
+        # self._consumer_rabbit_channel.queue_declare(queue=QueueName.CMD_BUYSELL, durable=True, auto_delete=True)
+        # self._logger.info(f"Consiming to rabbit queue {QueueName.CMD_BUYSELL}")
+        # self._consumer_rabbit_channel.basic_consume(QueueName.CMD_BUYSELL, self.on_cmd_buysell,
+        #                                             consumer_tag="WebQuikBroker")
         self._consumer_rabbit_channel.start_consuming()
+
+    def _listen_queue(self, queue, callback):
+        """
+        Add a listener callback to get buy/sell or raw commands from rabbit
+        """
+        # Listen buy/sell orders from external system
+        self._logger.info(f"Declaring rabbit queue {queue}")
+        self._consumer_rabbit_channel.queue_declare(queue=queue, durable=True, auto_delete=True)
+        self._logger.info(f"Declaring callback to rabbit queue: {queue}, callback: {callback}")
+        self._consumer_rabbit_channel.basic_consume(queue, callback,
+                                                    consumer_tag=queue)
 
     def on_order_answer(self, msg):
         self._logger.info(f"Got msg: {msg}")
+
+    def on_raw_msg(self, channel, method_frame, header_frame, rawmsg):
+        self._logger.info(f"Got raw msg {rawmsg}")
+        self._broker.send_raw_msg(rawmsg)
 
     def on_cmd_buysell(self, channel, method_frame, header_frame, rawmsg):
         self._logger.info(f"Got buy/sell command. msg={rawmsg}")
