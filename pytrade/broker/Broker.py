@@ -24,6 +24,9 @@ class Broker:
         self._logger.info("Initialized")
         self._subscribers = set()
 
+        # Domain entities
+        self.orders = set()
+
     def on_order_answer(self, msg):
         self._logger.info(f"Got msg: {msg}")
         for s in set(filter(lambda s: callable(getattr(s, 'on_order_answer', None)), self._subscribers)):
@@ -60,6 +63,7 @@ class Broker:
         # Information about my orders
         # msg={'msgid': 21001, 'qdate': 20210416, 'qtime': 195529, 'ccode': 'QJSIM', 'scode': 'SBER', 'sell': 0, 'account': 'NL0011100043', 'price': 28250, 'qty': 1, 'volume': 282500, 'balance': 0, 'yield': 0, 'accr': 0, 'refer': '10058//', 'type': 24, 'firm': 'NC0011100000', 'ucode': '10058', 'number': '5830057748', 'status': 2, 'price_currency': '', 'settle_currency': ''}
         self._logger.debug(f"On orders. order={order}")
+        self.orders.add(order)
         for s in set(filter(lambda s: callable(getattr(s, 'on_orders', None)), self._subscribers)):
             # todo: refactor to data classes instead of quik msg
             s.on_orders(order)
