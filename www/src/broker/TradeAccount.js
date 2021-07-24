@@ -47,7 +47,7 @@ class TradeAccount extends Component{
         // this.state.tradeAccounts.set(msgData.trdacc,msgData);
 
 
-        // var body = "{'msgid': 21022, 'trdacc': '2NL0011100043', 'firmid': 'NC0011100000', 'classList': ['QJSIM'], 'mainMarginClasses': ['QJSIM', 'SPBFUT'], 'limitsInLots': 0, 'limitKinds': ['0', '1', '2']}"
+        // var body = "{'msgid': 21022, 'trdacc': '2NL0011100043', 'firorders.itemsmid': 'NC0011100000', 'classList': ['QJSIM'], 'mainMarginClasses': ['QJSIM', 'SPBFUT'], 'limitsInLots': 0, 'limitKinds': ['0', '1', '2']}"
         // var msgData = JSON.parse(body.replace(/'/g, '"'));
         // this.state.tradeAccounts.set(msgData.trdacc,msgData);
 

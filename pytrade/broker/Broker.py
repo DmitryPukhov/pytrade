@@ -100,15 +100,15 @@ class Broker:
         # Register given feed callback
         self._subscribers.add(subscriber)
 
-    def on_trans_reply(self, msg: str):
+    def on_reply(self, msg: str):
         """
         Responce to my order
         ToDo: add order to history if successful
         """
-        self._logger.info(f"Got msg: {msg}")
-        for s in set(filter(lambda s: callable(getattr(s, 'on_trans_reply', None)), self._subscribers)):
+        self._logger.info(f"Got reply msg: {msg}")
+        for s in set(filter(lambda s: callable(getattr(s, 'on_reply', None)), self._subscribers)):
             # todo: refactor to data classes instead of quik msg
-            s.on_trans_reply(msg)
+            s.on_reply(msg)
 
     def on_heartbeat(self):
         """

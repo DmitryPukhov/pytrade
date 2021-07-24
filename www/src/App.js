@@ -8,6 +8,7 @@ import Orders from './broker/Orders.js';
 import StockLimits from './broker/StockLimits.js';
 import BuySell from './broker/BuySell';
 import RawMsg from './broker/RawMsg'
+import Replies  from './broker/Replies';
 
 import React,{Component} from 'react'
 
@@ -18,6 +19,7 @@ class App extends React.Component {
   constructor(props)  {
     super(props);
     this.rawMsg = React.createRef()
+    this.replies = React.createRef()
     this.priceChart = React.createRef();
     this.tradeAccount = React.createRef();
     this.orders = React.createRef();
@@ -49,6 +51,8 @@ class App extends React.Component {
       this.priceChart.current.onConnect.bind(this.priceChart.current)();
       this.tradeAccount.current.onConnect.bind(this.tradeAccount.current)();
       this.stockLimits.current.onConnect.bind(this.stockLimits.current)();
+      //this.rawMsg.current.onConnect.bind(this.rawMsg.current)();
+      this.replies.current.onConnect.bind(this.replies.current)();
   }
 
   onError(e){
@@ -63,6 +67,7 @@ class App extends React.Component {
             <main>
                 <PriceChart ref={this.priceChart} stompClient={this.stompClient}></PriceChart>
                 <RawMsg ref={this.rawMsg} stompClient={this.stompClient}></RawMsg>
+                <Replies ref={this.replies} stompClient={this.stompClient}></Replies>
                 <TradeAccount ref={this.tradeAccount} stompClient={this.stompClient}></TradeAccount>
                 <StockLimits ref={this.stockLimits} stompClient={this.stompClient}></StockLimits>
                 <Orders ref={this.orders} stompClient={this.stompClient}></Orders>

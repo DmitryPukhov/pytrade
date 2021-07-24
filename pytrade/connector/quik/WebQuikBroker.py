@@ -33,8 +33,17 @@ class WebQuikBroker:
             MsgId.MONEY_LIMITS: self.on_money_limits,
             MsgId.STOCK_LIMITS: self.on_stock_limits,
             MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received,
-            MsgId.ORDER_REPLY: self.on_order_answer,
-            MsgId.TRANS_REPLY: self.on_trans_reply
+
+            # Reply messages
+            MsgId.SERVER_MSG: self.on_reply,
+            MsgId.REMOVE_STOP_ORDER_REPLY: self.on_reply,
+            MsgId.REMOVE_ORDER_REPLY: self.on_reply,
+            MsgId.ORDER_REPLY: self.on_reply,
+            MsgId.STOP_ORDER_REPLY: self.on_reply,
+            MsgId.LINKED_STOP_ORDER_REPLY: self.on_reply,
+            MsgId.FX_ORDER_REPLY: self.on_reply,
+            MsgId.CONDITIONAL_STOP_ORDER_REPLY: self.on_reply,
+            MsgId.TRANS_REPLY: self.on_reply,
         }
         self._connector = connector
         self._connector.subscribe(self.callbacks)
@@ -93,14 +102,16 @@ class WebQuikBroker:
         # Register given feed callback
         self._broker_subscribers.append(subscriber)
 
-    def on_trans_reply(self, msg: str):
+    def on_reply(self, msg: str):
         """
         Responce to my order
         ToDo: add order to history if successful
         """
         # Successful transaction should look like this:
         # {"msgid":21009,"request":1,"status":3,"ordernum":5736932911,"datetime":"2021-03-08 22:05:35","text":"(161) Заявка N 5736932911 зарегистрирована. Удовлетворено 1"}
-        self._logger.info(f"Got msg: {msg}")
+        self._logger.debug(f"Got msg: {msg}")
+        for s in self._broker_subscribers:
+            s.on_reply(msg)
 
     def test(self):
         """

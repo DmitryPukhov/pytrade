@@ -31,7 +31,8 @@ class BrokerInterop:
                   QueueName.ORDERS,
                   QueueName.TRADES,
                   QueueName.MONEY_LIMITS,
-                  QueueName.STOCK_LIMITS
+                  QueueName.STOCK_LIMITS,
+                  QueueName.MSG_REPLY
                   ]:
             self._logger.info(f"Declaring rabbit queue {q}")
             self._rabbit_channel.queue_declare(queue=q, durable=True)
@@ -128,12 +129,13 @@ class BrokerInterop:
         # Register given feed callback
         self._broker_subscribers.add(subscriber)
 
-    def on_trans_reply(self, msg: str):
+    def on_reply(self, msg: str):
         """
-        Responce to my order
+        Responce to my message
         ToDo: add order to history if successful
         """
-        self._logger.info(f"Got msg: {msg}")
+        self._logger.debug(f"Got msg: {msg}")
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.MSG_REPLY, body=str(msg))
 
     def on_heartbeat(self):
         """
