@@ -76,7 +76,7 @@ class BrokerInterop:
 
     def on_raw_msg(self, channel, method_frame, header_frame, rawmsg):
         self._logger.info(f"Got raw msg {rawmsg}")
-        self._broker.send_raw_msg(rawmsg)
+        self._broker.send_raw_msg(rawmsg.decode())
 
     def on_cmd_buysell(self, channel, method_frame, header_frame, rawmsg):
         self._logger.info(f"Got buy/sell command. msg={rawmsg}")
