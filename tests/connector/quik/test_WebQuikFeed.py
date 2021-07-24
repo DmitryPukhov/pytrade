@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest import TestCase
 
 from connector.quik.WebQuikFeed import WebQuikFeed
-from model.Asset import Asset
+from model.feed.Asset import Asset
 
 
 class TestWebQuikFeed(TestCase):

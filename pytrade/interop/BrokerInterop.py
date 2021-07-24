@@ -6,6 +6,7 @@ from pika import BlockingConnection, ConnectionParameters
 from broker.Broker import Broker
 from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikBroker import WebQuikBroker
+from model.broker.Order import Order
 
 
 class BrokerInterop:
@@ -97,10 +98,11 @@ class BrokerInterop:
         self._logger.debug(f"On trade accounts. msg={msg}")
         self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.TRADE_ACCOUNT, body=str(msg))
 
-    def on_orders(self, msg):
+    def on_orders(self, order: Order):
         # Information about my orders
-        self._logger.debug(f"On orders. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=str(msg))
+        self._logger.debug(f"Got orders from broker: {order}")
+        msg = json.dumps(order.__dict__, default=str)
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.ORDERS, body=msg)
 
     def on_trades(self, msg):
         self._logger.debug(f"On trades. msg={msg}")

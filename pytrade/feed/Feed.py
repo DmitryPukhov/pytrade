@@ -1,15 +1,13 @@
 import itertools
-import json
 import logging
 from collections import defaultdict
 from datetime import *
-import numpy as np
 import pandas as pd
 
-from model.Asset import Asset
-from model.Level2 import Level2
-from model.Ohlcv import Ohlcv
-from model.Quote import Quote
+from model.feed.Asset import Asset
+from model.feed.Level2 import Level2
+from model.feed.Ohlcv import Ohlcv
+from model.feed.Quote import Quote
 
 pd.options.display.width = 0
 

@@ -3,7 +3,7 @@ import datetime as dt
 import os
 from pandas import DataFrame
 from feed.Feed import Feed
-from model.Asset import Asset
+from model.feed.Asset import Asset
 
 
 class Feed2Csv:

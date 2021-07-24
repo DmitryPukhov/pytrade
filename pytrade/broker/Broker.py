@@ -4,6 +4,7 @@ from threading import Thread
 from pika import BlockingConnection, ConnectionParameters
 from connector.quik.QueueName import QueueName
 from connector.quik.WebQuikBroker import WebQuikBroker
+from model.broker.Order import Order
 
 
 class Broker:
@@ -55,13 +56,13 @@ class Broker:
             # todo: refactor to data classes instead of quik msg
             s.on_trade_accounts(msg)
 
-    def on_orders(self, msg):
+    def on_orders(self, order: Order):
         # Information about my orders
         # msg={'msgid': 21001, 'qdate': 20210416, 'qtime': 195529, 'ccode': 'QJSIM', 'scode': 'SBER', 'sell': 0, 'account': 'NL0011100043', 'price': 28250, 'qty': 1, 'volume': 282500, 'balance': 0, 'yield': 0, 'accr': 0, 'refer': '10058//', 'type': 24, 'firm': 'NC0011100000', 'ucode': '10058', 'number': '5830057748', 'status': 2, 'price_currency': '', 'settle_currency': ''}
-        self._logger.debug(f"On orders. msg={msg}")
+        self._logger.debug(f"On orders. order={order}")
         for s in set(filter(lambda s: callable(getattr(s, 'on_orders', None)), self._subscribers)):
             # todo: refactor to data classes instead of quik msg
-            s.on_orders(msg)
+            s.on_orders(order)
 
     def on_trades(self, msg):
         self._logger.debug(f"On trades. msg={msg}")

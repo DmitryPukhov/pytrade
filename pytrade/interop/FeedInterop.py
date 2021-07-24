@@ -1,11 +1,10 @@
 import logging
-from datetime import datetime
 
 import pika
 from connector.quik.MsgId import MsgId
 from connector.quik.QueueName import QueueName
-from model.Asset import Asset
-from model.Ohlcv import Ohlcv
+from model.feed.Asset import Asset
+from model.feed.Ohlcv import Ohlcv
 
 
 class FeedInterop:

@@ -4,7 +4,7 @@ from typing import List
 
 from sortedcontainers import SortedList
 
-from model.Level2Item import Level2Item
+from model.feed.Level2Item import Level2Item
 
 
 @dataclass

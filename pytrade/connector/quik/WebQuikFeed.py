@@ -6,11 +6,11 @@ from datetime import datetime
 from typing import Optional
 from connector.quik.MsgId import MsgId
 from connector.quik.WebQuikConnector import WebQuikConnector
-from model.Asset import Asset
-from model.Level2 import Level2
-from model.Level2Item import Level2Item
-from model.Ohlcv import Ohlcv
-from model.Quote import Quote
+from model.feed.Asset import Asset
+from model.feed.Level2 import Level2
+from model.feed.Level2Item import Level2Item
+from model.feed.Ohlcv import Ohlcv
+from model.feed.Quote import Quote
 
 from websocket import ABNF
 

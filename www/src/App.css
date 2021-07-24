@@ -51,37 +51,37 @@ Main{
 
 }
 .rawmsg.panel {
-  grid-row: 1;
+  /* grid-row: 1;
   grid-column-start:1;
-  grid-column-end: 5;
+  grid-column-end: 5; */
   
   /* grid-column-start:1;
   grid-column-end: 5; */
 }
 .trdacc.panel {
-  grid-row-start: 2;
-  grid-row-end:4
+  /* grid-row-start: 2;
+  grid-row-end:4 */
   /* width:fit-content; */
 }
 
 .stocklimits.panel{
-  grid-row-start:2;
+  /* grid-row-start:2;
   grid-row-end:4;
-  grid-column:2;
+  grid-column:2; */
   /* width:fit-content; */
 }
 .pricechart.panel{
-  grid-row-start: 2;
-  grid-row-end:4;
+  /* grid-row-start: 2;
+  grid-row-end:4; */
   /* width: auto; */
 }
 .orders.panel {
-  grid-row: 2;
-  grid-column:4
+  /* grid-row: 2;
+  grid-column:4 */
 }
 .buysell.panel{
-  grid-row: 3;
-  grid-column:4; 
+  /* grid-row: 3;
+  grid-column:4;  */
 }
 
 .panel{
@@ -108,6 +108,10 @@ th, td {
   border-top-style:none; */
   border-width: thin;
   padding: 0.2em 1em 0.2em 1em;
+}
+th {
+  background-color:#5a5900;
+  color: #f5e8b0;
 }
 
 .trade-account li{

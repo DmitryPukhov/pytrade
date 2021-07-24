@@ -43,7 +43,7 @@ class BuySell extends Component{
         <div className="buysell"  class="buysell panel">
             <header>Send order</header>
             <div class="asset">
-                <div class="param">
+                <div class="asset">
                     <label for="assetCode">Asset:</label><label name="assetCode" class="assetCode">{this.secClass}/{this.secCode}</label>
                 </div>
                 <div class="param">

@@ -1,8 +1,12 @@
 import json
 import logging
 import random
+from datetime import datetime
+
+from connector.quik.MsgConverter import MsgConverter
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.MsgId import MsgId
+from model.broker.Order import Order
 
 
 class WebQuikBroker:
@@ -57,8 +61,9 @@ class WebQuikBroker:
     def on_orders(self, msg):
         # Information about my orders
         self._logger.debug(f"On orders. msg={msg}")
+        order = MsgConverter.msg2order(msg)
         for s in self._broker_subscribers:
-            s.on_orders(msg)
+            s.on_orders(order)
 
     def on_trades(self, msg):
         self._logger.debug(f"On trades. msg={msg}")

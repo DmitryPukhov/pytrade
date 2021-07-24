@@ -12,11 +12,14 @@
     margin-right:0.2em;
 }
 .buysell .param{
+    display:inline-block;
     text-align: right;
+
+    /* float: left;  */
 }
-.buysell .buttons{
+/* .buysell .buttons{
     text-align:right;
-}
+} */
 
 .rawmsg textarea{
     width:100%
