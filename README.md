@@ -23,7 +23,7 @@ Open rabbitmq at [http://localhost:15672/](http://localhost:15672/), use rabbitm
 
 ### Option 1. Single mode. 
 Only Python lives here, no integration with external systems.
-Set *is_interop: False*, in *app.yaml*. Add your strategy python class to strategy folder and set *strategy=<Your strategy class name>* in *app.yaml* Run and debug in your preferrable IDE using *App.py* entry point
+Set *is_interop: False*, in *app.yaml*. Add your strategy python class to strategy folder and set *strategy: ...* in *app.yaml* Run and debug in your preferrable IDE using *App.py* entry point
 
 ### Option 2. Interop mode - manage pytrade from external system
 Integration with external systems through rabbitmq If *is_interop: True* in app.yaml, pytrade sends the prices and receives buy/sell instructions to/from rabbit mq.  Any external system can read prices and make orders through rabbit. 
