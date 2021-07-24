@@ -3,6 +3,7 @@ import os
 import sys
 import yaml
 
+from broker.Broker import Broker
 from strategy.Strategy1 import *
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
@@ -28,31 +29,30 @@ class App:
 
         # Quik connector, single instance used by all brokers and feeds
         self._connector = WebQuikConnector(conn=config["conn"], passwd=config["passwd"], account=config["account"])
-        # Adapters for broker and feed
-        feed_adapter = WebQuikFeed(self._connector)
-        broker_adapter = WebQuikBroker(connector=self._connector, client_code=config["client_code"],
-                                       trade_account=config["trade_account"])
-        # Feed
-        feed = Feed(feed_adapter, config["sec_class"], config["sec_code"])
+
+        # Feed and broker
+        feed = Feed(WebQuikFeed(self._connector))
+        broker = Broker(WebQuikBroker(connector=self._connector, client_code=config["client_code"],
+                                      trade_account=config["trade_account"]))
 
         if config["is_interop"]:
-            self._init_interop(config, feed, broker_adapter)
+            self._init_interop(config, feed, broker)
         if config["is_feed2csv"]:
             self._feed2csv = Feed2Csv(feed)
 
         # Dynamically create the strategy by the name from config
-        self._init_strategy(config,feed, broker_adapter)
+        self._init_strategy(config, feed, broker)
 
     def _init_strategy(self, config, feed, broker):
         name = config['strategy']
         self._logger.info(f"Creating strategy {name}")
         self._strategy = globals()[name](feed, broker, config)
 
-    def _init_interop(self, config, feed, broker_adapter):
+    def _init_interop(self, config, feed, broker):
         self._logger.info("Configuring interop mode")
         rabbit_host = config["rabbit_host"]
         self._feed_interop = FeedInterop(feed=feed, rabbit_host=rabbit_host)
-        self._broker_interop = BrokerInterop(broker_adapter=broker_adapter, rabbit_host=rabbit_host)
+        self._broker_interop = BrokerInterop(broker=broker, rabbit_host=rabbit_host)
 
     def _load_config(self):
         """

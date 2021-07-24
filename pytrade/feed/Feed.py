@@ -19,13 +19,11 @@ class Feed:
     Base class for any feed. Keeps quotes and level2 in pandas dataframes.
     """
 
-    def __init__(self, feed_adapter, sec_class, sec_code):
+    def __init__(self, feed_adapter):
         self._logger = logging.getLogger(__name__)
 
         # Connecting to feed
         self._feed_adapter = feed_adapter
-        self.sec_class = sec_class
-        self.sec_code = sec_code
 
         self._subscribers = defaultdict(list)
         # self._feed.subscribe_feed(self.sec_class, self.sec_code, self)
