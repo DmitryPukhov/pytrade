@@ -83,6 +83,12 @@ class Broker:
             # todo: refactor to data classes instead of quik msg
             s.on_money_limits(msg)
 
+    def on_limits(self, msg):
+        self._logger.debug(f"On limits. msg={msg}")
+        for s in set(filter(lambda s: callable(getattr(s, 'on_limits', None)), self._subscribers)):
+            # todo: refactor to data classes instead of quik msg
+            s.on_limits(msg)
+
     def on_stock_limits(self, msg):
         self._logger.debug(f"On stock limits. msg={msg}")
         for s in set(filter(lambda s: callable(getattr(s, 'on_stock_limits', None)), self._subscribers)):

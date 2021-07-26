@@ -1,5 +1,8 @@
+import asyncio
 import json
 import logging
+import threading
+from collections import deque, defaultdict
 from enum import Enum
 import websocket
 from websocket import WebSocketApp
@@ -31,7 +34,7 @@ class WebQuikConnector:
         # Create websocket, do not open and run here
         self._conn = conn
         self.websocket_app: WebSocketApp = websocket.WebSocketApp(self._conn,
-                                                                  on_message=self._on_message,
+                                                                  on_message=self._on_socket_message,
                                                                   on_error=self._on_error,
                                                                   on_close=self._on_close,
                                                                   on_pong=self._on_heartbeat)
@@ -60,17 +63,21 @@ class WebQuikConnector:
             MsgId.TRANS_REPLY: self._on_msg_reply,
         }
         # Broker and feed, subscribed to message id
-        self._subscribers = {}
-
-        # Heart beat support
+        self._subscribers = defaultdict(list)
+        self._msgqueue = deque()
         self._heartbeat_cnt = 0
-        self.feed = None
-        self.broker = None
+        self._last_heartbeat = 0
+        self._lock = threading.Lock()
 
     def run(self):
+        threading.Thread(target=self.run_socket_app).start()
+        self.run_msg_loop()
+
+    def run_socket_app(self):
         """
         Create web socket and run loop
         """
+        self._logger.info("Running socket app")
         if self.status == WebQuikConnector.Status.DISCONNECTED:
             self.status = WebQuikConnector.Status.CONNECTING
             self._logger.info("Connecting to " + self._conn)
@@ -140,25 +147,56 @@ class WebQuikConnector:
         connected_msg = '{"msgid":10008}'
         self.websocket_app.send(connected_msg)
 
+    def _on_socket_message(self, raw_msg):
+        """
+        Get message from socket and put into the queue
+        """
+        self._msgqueue.append(raw_msg)
+
+    def _on_socket_heartbeat(self):
+        """
+        Get pong event from socket
+        """
+        self._heartbeat_cnt += 1
+
+    def run_msg_loop(self):
+        """
+        Main messages processing loop
+        Socket thread reads messages from socket and pushes to the queue
+        This msg_loop function runs in another thread, it pops messages from the queue and processes them
+        """
+        self._logger.info("Starting messages loop")
+        while True:
+            asyncio.sleep(1)
+            with self._lock:
+                if not self._msgqueue:
+                    continue
+                msg = self._msgqueue.popleft()
+                self._on_message(msg)
+        self._logger.info("End messages loop")
+
     def _on_message(self, raw_msg):
         """
         Entry for message processing. Call specific processors for different messages.
         """
-        strmsg = raw_msg.decode()
-        self._logger.debug('Got message %s', strmsg[:200])
-        msg = json.loads(strmsg)
-        # Find and execute callback function for this message
-        msgid = msg['msgid']
+        try:
+            strmsg = raw_msg.decode()
+            self._logger.debug('Got message %s', strmsg[:200])
+            msg = json.loads(strmsg)
+            # Find and execute callback function for this message
+            msgid = msg['msgid']
 
-        # Call internal callback is set up
-        msg_callback = self._callbacks.get(msgid)
-        if msg_callback:
-            # Don't send msg to consumers, process it in this class
-            msg_callback(msg)
+            # Call internal callback is set up
+            msg_callback = self._callbacks.get(msgid)
+            if msg_callback:
+                # Don't send msg to consumers, process it in this class
+                msg_callback(msg)
 
-        # Call external callback: broker or feed subscriber
-        for func in self._subscribers[msgid]:
-            func(msg)
+            # Call external callback: broker or feed subscriber
+            for func in self._subscribers[msgid]:
+                func(msg)
+        except Exception as e:
+            self._logger.exception(f"{e}, msg:{raw_msg.decode()}")
 
     def _on_msg_reply(self, msg):
         for func in self._subscribers[msg['msgid']]:
@@ -193,7 +231,7 @@ class WebQuikConnector:
         """
         Pass heart beat event to subscribers
         """
-        self._heartbeat_cnt += 1
+        self._logger.debug(f"Got heart beat. msg queue size: {len(self._msgqueue)}")
         if self.feed is not None:
             self.feed.on_heartbeat()
         if self.broker is not None:

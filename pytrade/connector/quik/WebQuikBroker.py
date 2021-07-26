@@ -32,6 +32,8 @@ class WebQuikBroker:
             MsgId.TRADES_FX: self.on_trades_fx,
             MsgId.MONEY_LIMITS: self.on_money_limits,
             MsgId.STOCK_LIMITS: self.on_stock_limits,
+            MsgId.LIMITS: self.on_limits,
+            21024: lambda f:...,
             MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received,
 
             # Reply messages
@@ -78,6 +80,12 @@ class WebQuikBroker:
         self._logger.debug(f"On trades. msg={msg}")
         for s in self._broker_subscribers:
             s.on_trades(msg)
+
+    def on_limits(self, msg):
+        self._logger.debug(f"On limits. msg={msg}")
+        for s in self._broker_subscribers:
+            s.on_limits(msg)
+
 
     def on_money_limits(self, msg):
         self._logger.debug(f"On money limits. msg={msg}")

@@ -36,13 +36,6 @@ class WebQuikFeed:
                           }
         self._connector.subscribe(self.callbacks)
 
-        # # Init rabbitmq connection
-        # self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
-        # self._rabbit_channel = self._rabbit_connection.channel()
-        # for q in [QueueName.CANDLES]:
-        #     self._logger.info(f"Declaring rabbit queue {q}")
-        #     self._rabbit_channel.queue_declare(queue=q, durable=True)
-
     @staticmethod
     def _ticker_of(asset: Asset) -> Optional[str]:
         if not asset:
