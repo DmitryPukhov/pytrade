@@ -119,7 +119,7 @@ class BrokerInterop:
 
     def on_limit_received(self, msg):
         self._logger.debug(f"Limit has received. msg={msg}")
-        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.STOCK_LIMIT, body=str(msg))
+        self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.LIMIT, body=str(msg))
 
     def subscribe_broker(self, subscriber):
         """
