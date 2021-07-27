@@ -23,7 +23,7 @@ class BrokerInterop:
         self._broker.subscribe_broker(self)
 
         # Init rabbit mq
-        self._logger.info(f"Init rabbit connection to {rabbit_host}")
+        self._logger.info(f"Connecting to rabbit host {rabbit_host}")
         self._rabbit_connection = BlockingConnection(ConnectionParameters(rabbit_host))
         # self._rabbit_connection = pika.connection.Connection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()

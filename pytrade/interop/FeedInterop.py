@@ -25,6 +25,7 @@ class FeedInterop:
         self._feed.subscribe_feed(Asset("*", "*"), self)
 
         # Init rabbitmq connection
+        self._logger.info(f"Connecting to rabbit host {rabbit_host}")
         self._rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(rabbit_host))
         self._rabbit_channel = self._rabbit_connection.channel()
         for q in [QueueName.CANDLES]:
