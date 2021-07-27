@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import queue
 import threading
 from collections import deque, defaultdict
 from enum import Enum
@@ -64,10 +65,9 @@ class WebQuikConnector:
         }
         # Broker and feed, subscribed to message id
         self._subscribers = defaultdict(list)
-        self._msgqueue = deque()
+        self._msgqueue:queue.Queue = queue.Queue()
         self._heartbeat_cnt = 0
         self._last_heartbeat = 0
-        self._lock = threading.Lock()
 
     def run(self):
         threading.Thread(target=self.run_socket_app).start()
@@ -151,7 +151,8 @@ class WebQuikConnector:
         """
         Get message from socket and put into the queue
         """
-        self._msgqueue.append(raw_msg)
+        # Queue is thread-safe already
+        self._msgqueue.put(raw_msg)
 
     def _on_socket_heartbeat(self):
         """
@@ -167,12 +168,9 @@ class WebQuikConnector:
         """
         self._logger.info("Starting messages loop")
         while True:
-            asyncio.sleep(1)
-            with self._lock:
-                if not self._msgqueue:
-                    continue
-                msg = self._msgqueue.popleft()
-                self._on_message(msg)
+            # get() method waits for the item then retuns it, using thread.Lock inside.
+            msg = self._msgqueue.get()
+            self._on_message(msg)
         self._logger.info("End messages loop")
 
     def _on_message(self, raw_msg):
@@ -216,6 +214,7 @@ class WebQuikConnector:
             self.websocket_app.close()
 
     def _on_close(self):
+        self._logger.info("Got on_close event")
         if self.status == WebQuikConnector.Status.DISCONNECTING:
             # If it's me who closed the socket
             self.status = WebQuikConnector.Status.DISCONNECTED
@@ -231,7 +230,7 @@ class WebQuikConnector:
         """
         Pass heart beat event to subscribers
         """
-        self._logger.debug(f"Got heart beat. msg queue size: {len(self._msgqueue)}")
+        self._logger.debug(f"Got heart beat. msg queue size: {self._msgqueue.qsize()}")
         if self.feed is not None:
             self.feed.on_heartbeat()
         if self.broker is not None:
