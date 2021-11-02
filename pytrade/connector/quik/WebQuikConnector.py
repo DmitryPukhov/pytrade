@@ -35,6 +35,12 @@ class WebQuikConnector:
         # Create websocket, do not open and run here
         self._conn = conn
         self.websocket_app: WebSocketApp = websocket.WebSocketApp(self._conn,
+                                                                  header={ \
+                                                                      "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " \
+                                                                                    "(KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36", \
+                                                                      "sid": "144f9.2b851e74", \
+                                                                      "version": "6.6.1" \
+                                                                      },
                                                                   on_message=self._on_socket_message,
                                                                   on_error=self._on_error,
                                                                   on_close=self._on_close,
@@ -91,7 +97,7 @@ class WebQuikConnector:
         self._logger.debug("Sending message: " + msg)
         self.websocket_app.send(msg)
 
-    def _on_socket_open(self):
+    def _on_socket_open(self, src):
         """
         Socket on_open handler
         Login just after web socket has been opened
@@ -147,7 +153,7 @@ class WebQuikConnector:
         connected_msg = '{"msgid":10008}'
         self.websocket_app.send(connected_msg)
 
-    def _on_socket_message(self, raw_msg):
+    def _on_socket_message(self, src,raw_msg):
         """
         Get message from socket and put into the queue
         """
@@ -200,7 +206,7 @@ class WebQuikConnector:
         for func in self._subscribers[msg['msgid']]:
             func(msg)
 
-    def _on_error(self, error):
+    def _on_error(self, src,error):
         self._logger.error('Got error msg %s: %s', type(error).__name__, str(error))
 
     def close(self):
@@ -213,8 +219,8 @@ class WebQuikConnector:
             self.websocket_app.send('{"msgid":11016}')
             self.websocket_app.close()
 
-    def _on_close(self):
-        self._logger.info("Got on_close event")
+    def _on_close(self,src,p1,p2):
+        self._logger.info(f"Got on_close event: {p1},{p2}")
         if self.status == WebQuikConnector.Status.DISCONNECTING:
             # If it's me who closed the socket
             self.status = WebQuikConnector.Status.DISCONNECTED

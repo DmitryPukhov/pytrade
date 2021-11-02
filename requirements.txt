@@ -1,5 +1,5 @@
 pyyaml~=5.4.1
-websocket-client==0.57.0
+websocket-client==1.2.1
 pandas~=1.2.1
 pika~=1.2.0
 sortedcontainers~=2.4.0
