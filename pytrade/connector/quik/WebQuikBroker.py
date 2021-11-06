@@ -1,12 +1,10 @@
 import json
 import logging
 import random
-from datetime import datetime
 
 from connector.quik.MsgConverter import MsgConverter
-from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.MsgId import MsgId
-from model.broker.Order import Order
+from connector.quik.WebQuikConnector import WebQuikConnector
 
 
 class WebQuikBroker:
@@ -33,7 +31,6 @@ class WebQuikBroker:
             MsgId.MONEY_LIMITS: self.on_money_limits,
             MsgId.STOCK_LIMITS: self.on_stock_limits,
             MsgId.LIMITS: self.on_limits,
-            21024: lambda f:...,
             MsgId.LIMIT_HAS_RECEIVED: self.on_limit_received,
 
             # Reply messages
@@ -46,6 +43,7 @@ class WebQuikBroker:
             MsgId.FX_ORDER_REPLY: self.on_reply,
             MsgId.CONDITIONAL_STOP_ORDER_REPLY: self.on_reply,
             MsgId.TRANS_REPLY: self.on_reply,
+            MsgId.HEARTBEAT: self.on_heartbeat
         }
         self._connector = connector
         self._connector.subscribe(self.callbacks)
@@ -86,7 +84,6 @@ class WebQuikBroker:
         for s in self._broker_subscribers:
             s.on_limits(msg)
 
-
     def on_money_limits(self, msg):
         self._logger.debug(f"On money limits. msg={msg}")
         for s in self._broker_subscribers:
@@ -120,29 +117,6 @@ class WebQuikBroker:
         self._logger.debug(f"Got msg: {msg}")
         for s in self._broker_subscribers:
             s.on_reply(msg)
-
-    def test(self):
-        """
-        todo: remove this test
-        :return:
-        """
-        msgdict = {
-            "transid": random.randint(1, 147483647),
-            "msgid": MsgId.ORDER,
-            "action": "SIMPLE_STOP_ORDER",
-            "MARKET_STOP_LIMIT": "YES",
-
-            "ccode": self.class_code,
-            "scode": self.sec_code,
-            "operation": "B",
-
-            "quantity": 1,
-            "clientcode": self.client_code,
-            "account": self.trade_account,
-            "stopprice": 215
-        }
-        msg = json.dumps(msgdict)
-        return msg
 
     def get_order_msg(self, class_code: str, sec_code: str, is_buy: bool, price: float, quantity: int) -> str:
         """
@@ -188,7 +162,7 @@ class WebQuikBroker:
         """
         raise NotImplementedError
 
-    def on_heartbeat(self):
+    def on_heartbeat(self, *args):
         """
         Heartbeating reaction
         """

@@ -85,7 +85,7 @@ class PriceChart extends Component{
         return (
         <div class="pricechart panel">
                 <div class="last-candle">
-                Last candle: {this.state.lastCandle.dt}, price: {this.state.lastCandle.c}
+                Last candle: {this.state.lastCandle.d}, price: {this.state.lastCandle.c}
                 </div>
                 <div class='price-chart'>
                     <Plot className='plot' ref = {this.plotly}   data={this.state.data} layout={this.state.layout}/>

@@ -48,3 +48,5 @@ class MsgId:
     FX_ORDER_REPLY = 22004  # ,22004:"Ответ по FX-заявке",
     REMOVE_ORDER_REPLY = 22100  # 22100:"Ответ по снятию заявки",
     REMOVE_STOP_ORDER_REPLY = 22101  # 22101:"Ответ по снятию стоп-заявки"
+
+    HEARTBEAT = "heartbeat"

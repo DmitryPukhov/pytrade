@@ -33,6 +33,7 @@ class WebQuikFeed:
                           MsgId.QUOTES: self._on_quotes,
                           MsgId.GRAPH: self._on_candle,
                           MsgId.LEVEL2: self._on_level2,
+                          MsgId.HEARTBEAT: self.on_heartbeat
                           }
         self._connector.subscribe(self.callbacks)
 
@@ -211,7 +212,7 @@ class WebQuikFeed:
             for subscriber in filter(lambda s: s.on_level2, subscribers):
                 subscriber.on_level2(asset, level2)
 
-    def on_heartbeat(self):
+    def on_heartbeat(self, *args):
         """
         Pass heartbeat event to feed consumer
         """

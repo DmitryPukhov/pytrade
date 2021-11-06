@@ -21,6 +21,7 @@ class BrokerInterop:
         self._rabbit_host = rabbit_host
         self._broker = broker
         self._broker.subscribe_broker(self)
+        self._broker_subscribers=[]
 
         # Init rabbit mq
         self._logger.info(f"Connecting to rabbit host {rabbit_host}")
