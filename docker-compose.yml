@@ -6,12 +6,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      rabbit:
-        condition: service_healthy
-    #restart: on-failure
-    links:
-      - rabbit
+    volumes:
+      - ./pytrade/data:/pytrade/data
+#    depends_on:
+#      rabbit:
+#        condition: service_healthy
+    #    links:
+    #      - rabbit
+    restart: on-failure
     networks:
       - pytrade
 
