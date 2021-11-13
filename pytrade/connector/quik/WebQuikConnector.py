@@ -30,25 +30,34 @@ class WebQuikConnector:
     _HEARTBEAT_SECONDS = 10
     _TIMEOUT_SECONDS = 9
 
-    def __init__(self, conn, account, passwd):
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(WebQuikConnector, 'instance'):
+            cls.instance = super(WebQuikConnector, cls).__new__(cls)
+        return cls.instance
+
+    #    def __init__(self, conn, account, passwd):
+    def __init__(self, config):
+        if getattr(self, 'is_initialized', False):
+            return
+        self.is_initialized = True
+        self._conn = config["conn"]
+        self._passwd = config["passwd"]
+        self._account = config["account"]
         self._logger = logging.getLogger(__name__)
 
         # Create websocket, do not open and run here
-        self._conn = conn
         self.websocket_app: WebSocketApp = websocket.WebSocketApp(self._conn,
                                                                   header={
-                                                                      "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " 
+                                                                      "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                                                                                     "(KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36",
                                                                       "sid": "144f9.2b851e74",
                                                                       "version": "6.6.1"
-                                                                      },
+                                                                  },
                                                                   on_message=self._on_socket_message,
                                                                   on_error=self._on_error,
                                                                   on_close=self._on_close,
                                                                   on_pong=self._on_socket_heartbeat)
         self.websocket_app.on_open = self._on_socket_open
-        self._passwd = passwd
-        self._account = account
         self.status = self.Status.DISCONNECTED
 
         # Callbacks for different messages msgid
@@ -76,8 +85,15 @@ class WebQuikConnector:
         self._msgqueue: queue.Queue = queue.Queue()
         self._heartbeat_cnt = 0
         self._last_heartbeat = 0
+        self._is_run = False
 
-    def run(self):
+    def run_once(self):
+        """
+        Run or skip if already called
+        """
+        if self._is_run:
+            return
+        self._is_run = True
         threading.Thread(target=self.run_socket_app).start()
         self.run_msg_loop()
 

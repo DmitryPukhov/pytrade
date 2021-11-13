@@ -5,9 +5,12 @@ import yaml
 
 from broker.Broker import Broker
 from strategy.Strategy1 import *
-from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
+from connector.quik.WebQuikBroker import WebQuikBroker
+from connector.CsvFeedConnector import CsvFeedConnector
+from connector.EmptyBrokerConnector import EmptyBrokerConnector
+
 from feed.Feed import Feed
 from feed.Feed2Csv import Feed2Csv
 from interop.BrokerInterop import BrokerInterop
@@ -27,13 +30,10 @@ class App:
         self._init_logger(config["log_dir"])
         self._logger.info("Initializing the App")
 
-        # Quik connector, single instance used by all brokers and feeds
-        self._connector = WebQuikConnector(conn=config["conn"], passwd=config["passwd"], account=config["account"])
-
         # Feed and broker
-        feed = Feed(WebQuikFeed(self._connector))
-        broker = Broker(WebQuikBroker(connector=self._connector, client_code=config["client_code"],
-                                      trade_account=config["trade_account"]))
+        self._init_connectors(config)
+        feed = Feed(self._feed_connector)
+        broker = Broker(self._broker_connector)
 
         if config["is_interop"]:
             self._init_interop(config, feed, broker)
@@ -42,6 +42,14 @@ class App:
 
         # Dynamically create the strategy by the name from config
         self._init_strategy(config, feed, broker)
+
+    def _init_connectors(self, config):
+        """
+        Dynamically set up feed and broker connectors from config
+        """
+        self._logger.info("Init broker and feed connectors")
+        self._broker_connector = globals()[config["broker_connector"]](config)
+        self._feed_connector = globals()[config["feed_connector"]](config)
 
     def _init_strategy(self, config, feed, broker):
         name = config['strategy']
@@ -93,8 +101,9 @@ class App:
 
         # Start strategy in a separate thread
         # Thread(target=self._strategy.run).start()
-        # Run connector in current thread. This single connector instance is used across the whole app
-        self._connector.run()
+        # Run feed and broker connectors
+        self._feed_connector.run()
+        self._broker_connector.run()
 
 
 if __name__ == "__main__":

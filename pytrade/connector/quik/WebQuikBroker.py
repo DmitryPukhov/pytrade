@@ -14,11 +14,13 @@ class WebQuikBroker:
     Todo: add different types of orders: stop, market ...
     """
 
-    def __init__(self, connector: WebQuikConnector, client_code, trade_account):
+#    def __init__(self, connector: WebQuikConnector, client_code, trade_account):
+    def __init__(self, config):
         self._logger = logging.getLogger(__name__)
 
-        self.client_code = client_code
-        self.trade_account = trade_account
+        self.client_code = config['client_code']
+        self.trade_account = config['trade_account']
+
         # 21001:"Заявки",
         # 21003:"Сделки",
         # 21004:"Денежн.лимиты"
@@ -45,13 +47,17 @@ class WebQuikBroker:
             MsgId.TRANS_REPLY: self.on_reply,
             MsgId.HEARTBEAT: self.on_heartbeat
         }
-        self._connector = connector
+        # Create web quik connector
+        self._connector = WebQuikConnector(config)
         self._connector.subscribe(self.callbacks)
         self._broker_subscribers = []
         # accounts dictionary class_code -> account info
         # Usually different accounts for securities, futures, forex ??
 
         self._logger.info("Initialized")
+
+    def run(self):
+        self._connector.run_once()
 
     def on_order_answer(self, msg):
         self._logger.info(f"Got msg: {msg}")

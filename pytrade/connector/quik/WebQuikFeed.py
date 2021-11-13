@@ -22,9 +22,10 @@ class WebQuikFeed:
     """
     any_asset = Asset("*", "*")
 
-    def __init__(self, connector: WebQuikConnector):
+#    def __init__(self, connector: WebQuikConnector):
+    def __init__(self, config):
         self._logger = logging.getLogger(__name__)
-        self._connector = connector
+        self._connector = WebQuikConnector(config)
         self._connector.feed = self
 
         # Subscribers for data feed. {(class_code, sec_code): callback_func}
@@ -36,6 +37,9 @@ class WebQuikFeed:
                           MsgId.HEARTBEAT: self.on_heartbeat
                           }
         self._connector.subscribe(self.callbacks)
+
+    def run(self):
+        self._connector.run_once()
 
     @staticmethod
     def _ticker_of(asset: Asset) -> Optional[str]:

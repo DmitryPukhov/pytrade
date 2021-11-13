@@ -1,8 +1,3 @@
-log_dir: "../logs"
-
-#rabbit_host: "localhost"
-rabbit_host: "rabbit"
-
 # Web quik config
 conn: 'wss://junior.webquik.ru:443/quik'
 
@@ -14,14 +9,28 @@ client_code: '10058'
 trade_account: "NL0011100043"
 
 
+
+log_dir: "../logs"
+
+#rabbit_host: "localhost"
+rabbit_host: "rabbit"
+
+
 # Main asset to trade
 sec_class: 'QJSIM'
 sec_code: 'SBER'
 
 # Interop mode, sends feed and receives orders from external systems through rabbitmq
-is_interop: False
+is_interop: True
 # Gather feed to csv or not
 is_feed2csv: False
-
-# Strategy to run
 strategy: Strategy1
+
+feed_connector: WebQuikFeed
+#feed_connector: CsvFeedConnector
+#csv_feed_candles: data/QJSIM_SBER_candles_2021-11-07.csv
+#csv_feed_quotes: data/QJSIM_SBER_quotes_2021-11-07.csv
+#csv_feed_level2: data/QJSIM_SBER_level2_2021-11-07.csv
+
+broker_connector: WebQuikBroker
+#broker_connector: EmptyBrokerConnector
