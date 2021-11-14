@@ -1,8 +1,8 @@
 from datetime import datetime
 from unittest import TestCase
 
-from connector.quik.WebQuikFeed import WebQuikFeed
-from model.feed.Asset import Asset
+from pytrade.connector.quik.WebQuikFeed import WebQuikFeed
+from pytrade.model.feed.Asset import Asset
 
 
 class TestWebQuikFeed(TestCase):

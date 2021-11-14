@@ -1,12 +1,34 @@
 from unittest import TestCase
 
-from connector.CsvFeedConnector import CsvFeedConnector
+import pandas as pd
+
+from pytrade.connector.CsvFeedConnector import CsvFeedConnector
 from datetime import datetime
 
 from model.feed.Asset import Asset
 
 
 class TestCsvFeedConnector(TestCase):
+    def test_level2_of(self):
+        # Set input
+        dt = datetime.fromisoformat("2021-11-14 10:00")
+        data = {'datetime': [dt, dt],
+                'ticker': ['stock1/ticker1', 'stock1/ticker1'],
+                'price': [1, 11],
+                'bid_vol': [2, 22],
+                'ask_vol': [3, 33]}
+        data = pd.DataFrame(data).to_numpy()
+
+        # Process
+        level2 = CsvFeedConnector._level2_of(data)
+
+        # Assert
+        self.assertEqual(level2.asset, Asset("stock1", "ticker1"))
+        self.assertEqual(level2.dt, dt)
+        self.assertEqual([item.price for item in level2.items], [1, 11])
+        self.assertEqual([item.bid_vol for item in level2.items], [2, 22])
+        self.assertEqual([item.ask_vol for item in level2.items], [3, 33])
+
     def test__quote_of(self):
         # Set input
         dt = datetime.now()
@@ -24,7 +46,7 @@ class TestCsvFeedConnector(TestCase):
     def test__ohlcv_of(self):
         # Set input
         dt = datetime.now()
-        data = {'ticker': str(Asset("stock1", "name1")), 'open': 1, 'high': 2, 'low': 3, 'close': 4,'volume':5}
+        data = {'ticker': str(Asset("stock1", "name1")), 'open': 1, 'high': 2, 'low': 3, 'close': 4, 'volume': 5}
         # Call
         candle = CsvFeedConnector._ohlcv_of(dt, data)
         # Assert

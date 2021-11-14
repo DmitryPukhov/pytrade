@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest import TestCase
 
-from connector.quik.MsgConverter import MsgConverter
+from pytrade.connector.quik.MsgConverter import MsgConverter
 
 
 class TestMsgConverter(TestCase):

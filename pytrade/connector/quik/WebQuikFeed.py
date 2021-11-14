@@ -4,13 +4,13 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-from connector.quik.MsgId import MsgId
-from connector.quik.WebQuikConnector import WebQuikConnector
-from model.feed.Asset import Asset
-from model.feed.Level2 import Level2
-from model.feed.Level2Item import Level2Item
-from model.feed.Ohlcv import Ohlcv
-from model.feed.Quote import Quote
+from pytrade.connector.quik.MsgId import MsgId
+from pytrade.connector.quik.WebQuikConnector import WebQuikConnector
+from pytrade.model.feed.Asset import Asset
+from pytrade.model.feed.Level2 import Level2
+from pytrade.model.feed.Level2Item import Level2Item
+from pytrade.model.feed.Ohlcv import Ohlcv
+from pytrade.model.feed.Quote import Quote
 
 from websocket import ABNF
 

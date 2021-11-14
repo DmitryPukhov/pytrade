@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 
 import pandas as pd
-from pandas import Timedelta
 
 from model.feed.Asset import Asset
 from model.feed.Level2 import Level2
@@ -56,38 +55,40 @@ class CsvFeedConnector:
     def run(self):
         # Read csvs to dataframes
         self.read_csvs()
+        self._logger.info("Producing the data from csvs")
         # Merge all datetimes
         ticks = pd.concat([self.quotes.index.to_series(),
                            self.candles.index.to_series(),
                            self.level2['datetime']]).sort_values()
-        # ticks = self.candles.index.to_series()
         # Process each time tick and produce candle, level2 or quote
         for dt, tick in ticks.iteritems():
             # Produce next quote
-            if dt in self.quotes.index:
+            if tick in self.quotes.index:
                 quote_dict = self.quotes.iloc[self.quotes.index.get_loc(dt)].to_dict()
                 quote = self._quote_of(dt, quote_dict)
                 for subscriber in self._feed_subscribers[quote.asset] + self._feed_subscribers[Asset.any_asset()]:
                     subscriber.on_quote(quote)
-            if dt in self.candles.index:
+            # Produce next candle
+            if tick in self.candles.index:
                 candle_dict = self.candles.iloc[self.candles.index.get_loc(dt)].to_dict()
                 candle = self._ohlcv_of(dt, candle_dict)
                 for subscriber in self._feed_subscribers[candle.asset] + self._feed_subscribers[Asset.any_asset()]:
                     subscriber.on_candle(candle)
-            # todo: add level2 support
-            # if dt in self.level2.index:
-            #     level2_dict = self.level2[self.level2['datetime'] == dt].to-dict
+            # Produce next level2
+            level2_items = self.level2[self.level2['datetime'] == tick].to_numpy()
+            if level2_items.size > 0:
+                level2 = CsvFeedConnector._level2_of(level2_items)
+                for subscriber in self._feed_subscribers[level2.asset] + self._feed_subscribers[Asset.any_asset()]:
+                    subscriber.on_level2(level2)
 
     @staticmethod
-    def _level2_of(dt: datetime, data: dict) -> Ohlcv:
-        return Ohlcv(dt=dt,
-                     asset=Asset.of(data['ticker']),
-                     o=data['open'],
-                     h=data['high'],
-                     l=data['low'],
-                     c=data['close'],
-                     v=data['volume']
-                     )
+    def _level2_of(data) -> Level2:
+        dt = pd.to_datetime(data[0][0])
+        asset = Asset.of(data[0][1])
+        # Price, bid, ask
+        level2_items = [Level2Item(data_item[2], data_item[3], data_item[4]) for data_item in data]
+        return Level2(dt, asset, level2_items)
+
 
     @staticmethod
     def _ohlcv_of(dt: datetime, data: dict) -> Ohlcv:

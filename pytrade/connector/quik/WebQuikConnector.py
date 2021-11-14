@@ -8,7 +8,7 @@ from enum import Enum
 import websocket
 from websocket import WebSocketApp
 
-from connector.quik.MsgId import MsgId
+from pytrade.connector.quik.MsgId import MsgId
 
 
 class WebQuikConnector:
