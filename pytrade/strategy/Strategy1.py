@@ -26,12 +26,12 @@ class Strategy1:
         self._logger.info("Running")
         # Subscribe to receive feed for the asset
 
-    def on_candle(self, asset: Asset, ohlcv: Ohlcv):
+    def on_candle(self, ohlcv: Ohlcv):
         """
         Receive a new candle event from feed. self.feed.candles dataframe contains all candles including this one.
         """
         # Skip if too early for a new processing cycle
-        self._logger.debug(f"Got new candle, asset: {asset}, ohlcv={ohlcv}")
+        self._logger.debug(f"Got new candle ohlcv={ohlcv}")
         if (datetime.now() - self._last_processed_time) < self._process_interval:
             return
         self._logger.debug(
@@ -44,15 +44,15 @@ class Strategy1:
         self._logger.debug(f"Got heartbeat")
         return
 
-    def on_quote(self, asset: Asset, quote: Quote):
+    def on_quote(self, quote: Quote):
         """
         Got a new quote. self.feed.quotes contains all quotes including this one
         """
-        self._logger.debug(f"Got new quote,  asset: {asset}, quote: {quote}")
+        self._logger.debug(f"Got new quote: {quote}")
 
-    def on_level2(self, asset: Asset, level2: Level2):
+    def on_level2(self, level2: Level2):
         """
         Got new level2 data. self.feed.level2 contains all level2 records including this one
         """
-        self._logger.debug(f"Got new level2, asset: {asset},  level2: {level2}")
+        self._logger.debug(f"Got new level2: {level2}")
         return

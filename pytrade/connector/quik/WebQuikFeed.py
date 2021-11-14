@@ -20,9 +20,8 @@ class WebQuikFeed:
     Feed facade. Provides feed info from web quik connector to consumer.
     Parse feed messages from web quik.
     """
-    any_asset = Asset("*", "*")
 
-#    def __init__(self, connector: WebQuikConnector):
+    #    def __init__(self, connector: WebQuikConnector):
     def __init__(self, config):
         self._logger = logging.getLogger(__name__)
         self._connector = WebQuikConnector(config)
@@ -59,24 +58,30 @@ class WebQuikFeed:
         return asset
 
     @staticmethod
-    def _ohlcv_of(quik_ohlcv: dict) -> Ohlcv:
+    def _ohlcv_of(asset_str: str, quik_ohlcv: dict) -> Ohlcv:
         return Ohlcv(
-            datetime.fromisoformat(quik_ohlcv['d']), quik_ohlcv['o'], quik_ohlcv['h'], quik_ohlcv['l'], quik_ohlcv['c'],
+            datetime.fromisoformat(quik_ohlcv['d']),
+            WebQuikFeed._asset_of(asset_str),
+            quik_ohlcv['o'],
+            quik_ohlcv['h'],
+            quik_ohlcv['l'],
+            quik_ohlcv['c'],
             quik_ohlcv['v'])
 
     @staticmethod
-    def _quote_of(quik_quote: dict) -> Quote:
+    def _quote_of(ticker: str, quik_quote: dict) -> Quote:
         return Quote(
             dt=datetime.now(),
+            asset=WebQuikFeed._asset_of(ticker),
             bid=quik_quote.get('bid'),
             ask=quik_quote.get('offer'),
             last=quik_quote.get('last'),
             last_change=quik_quote.get('lastchange'))
 
     @staticmethod
-    def _level2_of(dt, quik_level2: dict):
+    def _level2_of(dt, asset: str, quik_level2: dict):
         # {'22806': {'b': 234, 's': 0, 'by': 0, 'sy': 0}
-        level2 = Level2(dt)
+        level2 = Level2(dt, asset)
         for key in quik_level2.keys():
             # Parse price, bid volume, ask volume
             price = float(key)
@@ -132,7 +137,7 @@ class WebQuikFeed:
         On start, trade session is opened. Now we can request data and set orders
         """
         self._logger.debug(f"Trade session opened. Requesting feeds for subscribers: {self._feed_subscribers}")
-        for asset in filter(lambda a: a != WebQuikFeed.any_asset, self._feed_subscribers):
+        for asset in filter(lambda a: a != Asset.any_asset(), self._feed_subscribers):
             self._request_feed(asset)
 
     def _on_quotes(self, data: dict):
@@ -144,10 +149,10 @@ class WebQuikFeed:
         for quik_asset in data['dataResult'].keys():
             asset = WebQuikFeed._asset_of(quik_asset)
             if asset in self._feed_subscribers.keys():
-                quote = WebQuikFeed._quote_of(data['dataResult'][quik_asset])
+                quote = WebQuikFeed._quote_of(quik_asset, data['dataResult'][quik_asset])
                 # Send to subscriber
-                for subscriber in self._feed_subscribers[asset] + self._feed_subscribers[WebQuikFeed.any_asset]:
-                    subscriber.on_quote(asset, quote)
+                for subscriber in self._feed_subscribers[asset] + self._feed_subscribers[Asset.any_asset()]:
+                    subscriber.on_quote(quote)
 
     def _on_candle(self, data: dict):
         """
@@ -167,7 +172,7 @@ class WebQuikFeed:
             asset_data = data['graph'][asset_str]
             for quik_ohlcv in asset_data:
                 # Each ohlcv for this asset
-                ohlcv = WebQuikFeed._ohlcv_of(quik_ohlcv)
+                ohlcv = WebQuikFeed._ohlcv_of(asset_str,quik_ohlcv)
 
                 # Send the candle to rabbitmq
                 # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
@@ -175,7 +180,7 @@ class WebQuikFeed:
                 # Send data to subscribers
                 subscribers = self._feed_subscribers[asset] + self._feed_subscribers[self.any_asset]
                 for subscriber in set(filter(lambda s: s.on_candle, subscribers)):
-                    subscriber.on_candle(asset, ohlcv)
+                    subscriber.on_candle(ohlcv)
 
     def _on_level2(self, data: dict):
         """
@@ -195,8 +200,8 @@ class WebQuikFeed:
                 continue
             # {'22806':  {'b': 234, 's': 0, 'by': 0, 'sy': 0}, ..}
             level2_quik: dict = data['quotes'][asset_str]['lines']
-            #level2 = {}
-            #Level2(datetime.now())
+            # level2 = {}
+            # Level2(datetime.now())
             # Fill in level2 items
             items = []
             for key in level2_quik.keys():
@@ -209,12 +214,12 @@ class WebQuikFeed:
                     ask = None
                 items.append(Level2Item(price, bid, ask))
 
-            level2 = Level2.of(datetime.now(), items)
+            level2 = Level2.of(datetime.now(),asset, items)
 
             # If somebody subscribed to level2 of this asset, send her this data.
-            subscribers = self._feed_subscribers[asset] + self._feed_subscribers[WebQuikFeed.any_asset]
+            subscribers = self._feed_subscribers[asset] + self._feed_subscribers[Asset.any_asset()]
             for subscriber in filter(lambda s: s.on_level2, subscribers):
-                subscriber.on_level2(asset, level2)
+                subscriber.on_level2(level2)
 
     def on_heartbeat(self, *args):
         """

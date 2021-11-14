@@ -10,6 +10,7 @@ from connector.quik.WebQuikFeed import WebQuikFeed
 from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.CsvFeedConnector import CsvFeedConnector
 from connector.EmptyBrokerConnector import EmptyBrokerConnector
+from connector.MemoryBrokerConnector import MemoryBrokerConnector
 
 from feed.Feed import Feed
 from feed.Feed2Csv import Feed2Csv

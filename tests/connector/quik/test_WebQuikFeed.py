@@ -14,15 +14,16 @@ class TestWebQuikFeed(TestCase):
         data = {1: {'b': 4, 's': 7, 'by': 0, 'sy': 0},
                 2: {'b': 5, 's': 8, 'by': 0, 'sy': 0},
                 3: {'b': 6, 's': 9, 'by': 0, 'sy': 0}}
-        level2 = WebQuikFeed._level2_of(datetime(2021, 7, 23, 12, 51), data)
+        level2 = WebQuikFeed._level2_of(datetime(2021, 7, 23, 12, 51), Asset("code1", "sec1"), data)
         self.assertEqual(level2.dt, datetime(2021, 7, 23, 12, 51))
-        self.assertEqual([1,2,3], [item.price for item in level2.items])
-        self.assertEqual([4,5,6], [item.bid_vol for item in level2.items])
-        self.assertEqual([7,8,9], [item.ask_vol for item in level2.items])
+        self.assertEqual(level2.asset, Asset("code1", "sec1"))
+        self.assertEqual([1, 2, 3], [item.price for item in level2.items])
+        self.assertEqual([4, 5, 6], [item.bid_vol for item in level2.items])
+        self.assertEqual([7, 8, 9], [item.ask_vol for item in level2.items])
 
     def test_quote_of_empty(self):
-        data={}
-        quote = WebQuikFeed._quote_of(data)
+        data = {}
+        quote = WebQuikFeed._quote_of(None, data)
         self.assertIsNotNone(quote.dt)
         self.assertIsNone(quote.bid)
         self.assertIsNone(quote.ask)
@@ -31,8 +32,9 @@ class TestWebQuikFeed(TestCase):
 
     def test_quote_of(self):
         data = {"bid": 1, "offer": 2, "last": 3, "lastchange": 4}
-        quote = WebQuikFeed._quote_of(data)
+        quote = WebQuikFeed._quote_of("stock1¦asset1", data)
         self.assertIsNotNone(quote.dt)
+        self.assertEqual(Asset("stock1", "asset1"), quote.asset)
         self.assertEqual(1, quote.bid)
         self.assertEqual(2, quote.ask)
         self.assertEqual(3, quote.last)
@@ -40,7 +42,8 @@ class TestWebQuikFeed(TestCase):
 
     def test_ohlcv_of(self):
         data = {"d": "2019-10-01 10:02:00", "o": 1, "c": 2, "h": 3, "l": 4, "v": 5}
-        ohlcv = WebQuikFeed._ohlcv_of(data)
+        ohlcv = WebQuikFeed._ohlcv_of("stock1¦asset1", data)
+        self.assertEqual(ohlcv.asset, Asset("stock1","asset1"))
         self.assertEqual(ohlcv.dt, datetime(2019, 10, 1, 10, 2, 0))
         self.assertEqual(ohlcv.o, 1)
         self.assertEqual(ohlcv.h, 3)
@@ -69,7 +72,7 @@ class TestWebQuikFeed(TestCase):
         self.assertIsNone(asset)
 
     def test_asset_of_3partsname(self):
-        asset:Asset = WebQuikFeed._asset_of("QJSIM¦SBER¦0")
+        asset: Asset = WebQuikFeed._asset_of("QJSIM¦SBER¦0")
         self.assertEqual("QJSIM", asset.class_code)
         self.assertEqual("SBER", asset.sec_code)
 

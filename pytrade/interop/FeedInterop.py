@@ -22,7 +22,7 @@ class FeedInterop:
             MsgId.GRAPH: self.on_candle,
             # MsgId.LEVEL2: self._on_level2,
         }
-        self._feed.subscribe_feed(Asset("*", "*"), self)
+        self._feed.subscribe_feed(Asset.any_asset(), self)
 
         # Init rabbitmq connection
         self._logger.info(f"Connecting to rabbit host {rabbit_host}")
@@ -32,16 +32,16 @@ class FeedInterop:
             self._logger.info(f"Declaring rabbit queue {q}")
             self._rabbit_channel.queue_declare(queue=q, durable=True)
 
-    def on_candle(self, asset: Asset, ohlcv: Ohlcv):
+    def on_candle(self, ohlcv: Ohlcv):
         """
         Receive ohlc data and transfer to rabbit mq for interop
         :param data: dict like {"msgid":21016,"graph":{"QJSIM\u00A6SBER\u00A60":[{"d":"2019-10-01
         10:02:00","o":22649,"c":22647,"h":22649,"l":22646,"v":1889}]}} :return:
         """
 
-        self._logger.debug(f'Got feed: {asset}, {ohlcv}')
+        self._logger.debug(f'Got candle:  {ohlcv}')
         # ohlcv = {'d': str(dt), 'o': ohlcv, 'h': h, 'l': l_, 'c': c, 'v': asset}
         # self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(ohlcv))
-        asset_ohlcv = {'asset': str(asset), 'dt': str(ohlcv.dt), 'o': ohlcv.o, 'h': ohlcv.h, 'l': ohlcv.l, 'c': ohlcv.c,
+        asset_ohlcv = {'asset': str(ohlcv.asset), 'dt': str(ohlcv.dt), 'o': ohlcv.o, 'h': ohlcv.h, 'l': ohlcv.l, 'c': ohlcv.c,
                        'v': ohlcv.v}
         self._rabbit_channel.basic_publish(exchange='', routing_key=QueueName.CANDLES, body=str(asset_ohlcv))
