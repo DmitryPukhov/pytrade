@@ -7,7 +7,7 @@ class Preprocess:
     Market data cleaning, imputing, feature extraction.
     """
 
-    def level2_features(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 0) -> pd.DataFrame:
+    def level2_features(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
         """
         Return dataframe with level2 feature columns. Colums are named "bucket<n>"
         where n in a number of price interval and value is summary volumes inside this price.
@@ -16,6 +16,25 @@ class Preprocess:
         level2 price and volume for each time
         """
 
+        # Assign bucket number for each level2 item
+        level2 = self.assign_bucket(level2, l2size, buckets)
+
+        # Pivot buckets to feature columns: bucket_1, bucket_2 etc. with summary bucket's volume as value.
+        maxbucket = buckets // 2 - 1
+        minbucket = -buckets // 2
+        askfeatures = self.pivot_buckets(level2, 'ask_vol', 0, maxbucket)
+        bidfeatures = self.pivot_buckets(level2, 'bid_vol', minbucket, -1)
+
+        # Ask + bid buckets
+        level2features = bidfeatures.merge(askfeatures, on='datetime')
+        return level2features
+
+    def assign_bucket(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 0) -> pd.DataFrame:
+        """
+        To each level2 item set it's bucket number.
+        l2size: max-min price across all level2 snapshots
+        buckets: split level2 snapshots to this number of items, calculate volume inside each bucket
+        """
         # Calc middle price between ask and bid
         level2 = level2.set_index("datetime")
         askmin = level2[level2['ask_vol'].notna()].groupby('datetime')['price'].min().reset_index().set_index(
@@ -31,7 +50,7 @@ class Preprocess:
         if not l2size:
             l2size = level2.groupby('datetime')['price'].agg(np.ptp).reset_index()['price'].median()
         # 10 ask steps + 10 bid steps
-        buckets = 20
+        # buckets = 20
         bucketsize = l2size / buckets
 
         # If price is too out, set maximum possible bucket
@@ -40,28 +59,22 @@ class Preprocess:
         minbucket = -buckets // 2
         level2['bucket'][level2['bucket'] > maxbucket] = maxbucket
         level2['bucket'][level2['bucket'] < minbucket] = minbucket
+        return level2
 
+    def pivot_buckets(self, level2: pd.DataFrame, vol_col_name: str, minbucket: int, maxbucket: int) -> pd.DataFrame:
+        """
+        Pivot dataframe to make bucket columns with volume values
+        """
         # Calculate volume inside each group
-        askgroups = level2[level2['bucket'] >= 0].groupby(['datetime', 'bucket'])['ask_vol'].sum().reset_index(level=1)
-        askgroups['bucket'] = askgroups['bucket'].astype(int)
-        askfeatures = askgroups.reset_index().pivot_table(index='datetime', columns='bucket', values='ask_vol')
+        grouped = level2[level2['bucket'].between(minbucket, maxbucket)].groupby(['datetime', 'bucket'])[
+            vol_col_name].sum().reset_index(level=1)
+        grouped['bucket'] = grouped['bucket'].astype(int)
+        features = grouped.reset_index().pivot_table(index='datetime', columns='bucket', values=vol_col_name)
         # Add absent buckets (rare case)
-        for col in range(0, maxbucket + 1):
-            if col not in askfeatures.columns:
-                askfeatures[col] = 0
-        askfeatures = askfeatures[sorted(askfeatures)]
-        askfeatures.columns = ['l2_bucket_' + str(col) for col in askfeatures.columns]
+        for col in range(minbucket, maxbucket + 1):
+            if col not in features.columns:
+                features[col] = 0
+        features = features[sorted(features)]
 
-        bidgroups = level2[level2['bucket'] < 0].groupby(['datetime', 'bucket'])['bid_vol'].sum().reset_index(level=1)
-        bidgroups['bucket'] = bidgroups['bucket'].astype(int)
-        bidfeatures = bidgroups.reset_index().pivot_table(index='datetime', columns='bucket', values='bid_vol')
-        # Add absent buckets (rare case)
-        for col in range(minbucket, 0):
-            if col not in bidfeatures.columns:
-                bidfeatures[col] = 0
-        bidfeatures = bidfeatures[sorted(bidfeatures)]
-        bidfeatures.columns = ['l2_bucket_' + str(col) for col in bidfeatures.columns]
-
-        # Ask + bid buckets
-        level2features = bidfeatures.merge(askfeatures, on='datetime')
-        return level2features
+        features.columns = ['l2_bucket_' + str(col) for col in features.columns]
+        return features
