@@ -2,12 +2,12 @@ import pandas as pd
 import numpy as np
 
 
-class Preprocess:
+class Level2Features:
     """
     Market data cleaning, imputing, feature extraction.
     """
 
-    def level2_features(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
+    def with_level2_features(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
         """
         Return dataframe with level2 feature columns. Colums are named "bucket<n>"
         where n in a number of price interval and value is summary volumes inside this price.
