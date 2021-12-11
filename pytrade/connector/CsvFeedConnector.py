@@ -111,25 +111,6 @@ class CsvFeedConnector:
             last=data['last'],
             last_change=data['last_change'])
 
-    #
-    # @staticmethod
-    # def _level2_of(dt, quik_level2: dict):
-    #     # {'22806': {'b': 234, 's': 0, 'by': 0, 'sy': 0}
-    #     level2 = Level2(dt)
-    #     for key in quik_level2.keys():
-    #         # Parse price, bid volume, ask volume
-    #         price = float(key)
-    #         bid_vol = quik_level2[key]['b']
-    #         if bid_vol == 0:
-    #             bid_vol = None
-    #         ask_vol = quik_level2[key]['s']
-    #         if ask_vol == 0:
-    #             ask_vol = None
-    #         # Add price, bid vol, ask vol to level 2 prices
-    #         level2.items.add(Level2Item(price, bid_vol, ask_vol))
-    #
-    #     return level2
-
     def preprocess(self):
         # Pivot to create feature columns of level2 prices and volumes
         df = self.level2

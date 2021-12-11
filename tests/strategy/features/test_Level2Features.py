@@ -10,14 +10,15 @@ class TestLevel2Features(TestCase):
     def test_level2_features__equal_buckets(self):
         # datetime, price, ask_vol, bid_vol
         # Each bucket has one item
-        asks = [{'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': i, 'ask_vol': 1, 'bid_vol': None}
-                for i in range(10, 20)]
-        bids = [{'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': i, 'ask_vol': None, 'bid_vol': 1}
-                for i in range(0, 10)]
-        data = asks + bids
-
+        # todo: set index as in feed
+        asks = [{'asset': 'asset1', 'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': i, 'ask_vol': 1,
+                 'bid_vol': None} for i in range(10, 20)]
+        bids = [
+            {'asset': 'asset1', 'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': i, 'ask_vol': None,
+             'bid_vol': 1} for i in range(0, 10)]
+        data = pd.DataFrame(asks+bids)
         # Call
-        features = Level2Features().with_level2_features(pd.DataFrame(data)).values.tolist()
+        features = Level2Features().level2_buckets(data).values.tolist()
 
         # Assert all features should be 1.0
         self.assertEqual([[1.0] * 20], features)
@@ -25,14 +26,14 @@ class TestLevel2Features(TestCase):
     def test_level2_absent_levels(self):
         # datetime, price, ask_vol, bid_vol
         # Not all level buckets are present
-        data = [
+        data = pd.DataFrame([
             {'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': 0.9, 'ask_vol': 1, 'bid_vol': None},
             {'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': 0.9, 'ask_vol': 1, 'bid_vol': None},
             {'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': -0.9, 'ask_vol': None, 'bid_vol': 1},
             {'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': -0.9, 'ask_vol': None, 'bid_vol': 1}
-        ]
+        ])
 
-        features = Level2Features().with_level2_features(pd.DataFrame(data), l2size=20, buckets=20)
+        features = Level2Features().level2_buckets(data, l2size=20, buckets=20)
         lst = features.values.tolist()
 
         # All features should be 1.0

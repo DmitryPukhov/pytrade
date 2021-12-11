@@ -24,7 +24,7 @@ sec_code: 'SBER'
 is_interop: True
 # Gather feed to csv or not
 is_feed2csv: False
-strategy: Strategy1
+strategy: PeriodicalLearnStrategy
 
 feed_connector: WebQuikFeed
 #feed_connector: CsvFeedConnector

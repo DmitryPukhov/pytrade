@@ -4,10 +4,10 @@ import numpy as np
 
 class Level2Features:
     """
-    Market data cleaning, imputing, feature extraction.
+    Level2 feature engineering
     """
 
-    def with_level2_features(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
+    def level2_buckets(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
         """
         Return dataframe with level2 feature columns. Colums are named "bucket<n>"
         where n in a number of price interval and value is summary volumes inside this price.
@@ -15,8 +15,8 @@ class Level2Features:
         level2: DataFrame with level2 tick columns: datetime, price, bid_vol, ask_vol
         level2 price and volume for each time
         """
-
         # Assign bucket number for each level2 item
+        level2.set_index("datetime")
         level2 = self.assign_bucket(level2, l2size, buckets)
 
         # Pivot buckets to feature columns: bucket_1, bucket_2 etc. with summary bucket's volume as value.
@@ -29,7 +29,7 @@ class Level2Features:
         level2features = bidfeatures.merge(askfeatures, on='datetime')
         return level2features
 
-    def assign_bucket(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 0) -> pd.DataFrame:
+    def assign_bucket(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
         """
         To each level2 item set it's bucket number.
         l2size: max-min price across all level2 snapshots
@@ -57,8 +57,7 @@ class Level2Features:
         level2['bucket'] = (level2['price'] - level2['price_middle']) // bucketsize
         maxbucket = buckets // 2 - 1
         minbucket = -buckets // 2
-        level2['bucket'][level2['bucket'] > maxbucket] = maxbucket
-        level2['bucket'][level2['bucket'] < minbucket] = minbucket
+        level2['bucket'] = level2['bucket'].clip(upper=maxbucket, lower=minbucket)
         return level2
 
     def pivot_buckets(self, level2: pd.DataFrame, vol_col_name: str, minbucket: int, maxbucket: int) -> pd.DataFrame:
@@ -68,6 +67,7 @@ class Level2Features:
         # Calculate volume inside each group
         grouped = level2[level2['bucket'].between(minbucket, maxbucket)].groupby(['datetime', 'bucket'])[
             vol_col_name].sum().reset_index(level=1)
+
         grouped['bucket'] = grouped['bucket'].astype(int)
         features = grouped.reset_index().pivot_table(index='datetime', columns='bucket', values=vol_col_name)
         # Add absent buckets (rare case)

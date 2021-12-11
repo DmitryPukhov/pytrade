@@ -14,9 +14,9 @@ class TestTargetFeatures(TestCase):
                                 'ask': 10, 'last': 5},
                                {'datetime': datetime.fromisoformat('2021-12-08 07:01:01'), 'ticker': 'asset1', 'bid': 4,
                                 'ask': 6, 'last': 5}
-                               ]).set_index('datetime')
+                               ]).set_index(['datetime','ticker'])
 
-        withminmax = TargetFeatures().with_min_max_future(quotes, 1, 'min')
+        withminmax = TargetFeatures().min_max_future(quotes, 1, 'min')
         self.assertEqual([1, 4], withminmax['fut_bid_min'].values.tolist())
         self.assertEqual([10, 6], withminmax['fut_ask_max'].values.tolist())
 
@@ -26,9 +26,9 @@ class TestTargetFeatures(TestCase):
                                 'ask': 6, 'last': 5},
                                {'datetime': datetime.fromisoformat('2021-12-08 07:00:59'), 'ticker': 'asset1', 'bid': 1,
                                 'ask': 10, 'last': 5}
-                               ]).set_index('datetime')
+                               ]).set_index(['datetime','ticker'])
 
-        withminmax = TargetFeatures().with_min_max_future(quotes, 1, 'min')
+        withminmax = TargetFeatures().min_max_future(quotes, 1, 'min')
         self.assertEqual([1, 1], withminmax['fut_bid_min'].values.tolist())
         self.assertEqual([10, 10], withminmax['fut_ask_max'].values.tolist())
 
@@ -44,9 +44,9 @@ class TestTargetFeatures(TestCase):
             {'datetime': datetime.fromisoformat('2021-11-26 17:04:00'), 'ticker': 'asset1', 'bid': 3, 'ask': 7},
             {'datetime': datetime.fromisoformat('2021-11-26 17:05:00'), 'ticker': 'asset1', 'bid': 4, 'ask': 6},
             {'datetime': datetime.fromisoformat('2021-11-26 17:06:00'), 'ticker': 'asset1', 'bid': 3, 'ask': 7}
-        ]).set_index('datetime')
+        ]).set_index(['datetime', 'ticker'])
 
-        withminmax = TargetFeatures().with_min_max_future(quotes, 1, 'min')
+        withminmax = TargetFeatures().min_max_future(quotes, 1, 'min')
 
         self.assertEqual([1, 1, 2, 2, 4, 3, 4, 3], withminmax['fut_bid_min'].values.tolist())
         self.assertEqual([10, 10, 8, 8, 6, 7, 6, 7], withminmax['fut_ask_max'].values.tolist())

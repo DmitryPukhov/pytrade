@@ -4,7 +4,7 @@ import sys
 import yaml
 
 from broker.Broker import Broker
-from strategy.Strategy1 import *
+from strategy.PeriodicalLearnStrategy import *
 from connector.quik.WebQuikConnector import WebQuikConnector
 from connector.quik.WebQuikFeed import WebQuikFeed
 from connector.quik.WebQuikBroker import WebQuikBroker

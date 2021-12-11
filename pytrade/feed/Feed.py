@@ -37,8 +37,8 @@ class Feed:
         self.candles.set_index(['datetime', 'ticker'], inplace=True)
         self.quotes.set_index(['datetime', 'ticker'], inplace=True)
         self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
-        #self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'items'])
-        self.level2.set_index(['datetime', 'ticker', 'price'], inplace=True)
+        # self.level2: pd.DataFrame = pd.DataFrame(columns=['datetime', 'ticker', 'price', 'items'])
+        # self.level2.set_index(['datetime', 'ticker', 'price'], inplace=True)
 
     def subscribe_feed(self, asset: Asset, subscriber):
         """
@@ -91,7 +91,9 @@ class Feed:
         asset_str = str(level2.asset)
         # Add new level2 records to dataframe
         for item in level2.items:
-            self.level2.at[(level2.dt, asset_str, item.price),['bid_vol', 'ask_vol']] = [item.bid_vol, item.ask_vol]
+            self.level2 = self.level2.append({'datetime': level2.dt, 'ticker': asset_str, 'price': item.price,
+                                              'ask_vol': item.ask_vol, 'bid_vol': item.bid_vol}, ignore_index=True)
+            # self.level2.at[(level2.dt, asset_str, item.price),['datetime','bid_vol', 'ask_vol','price']] = [level2.dt, item.price,item.bid_vol, item.ask_vol]
         # Push level2 event up
         subscribers = self._subscribers[level2.asset] + self._subscribers[Asset("*", "*")]
         push_list = set(filter(lambda s: callable(getattr(s, 'on_level2', None)), subscribers))
