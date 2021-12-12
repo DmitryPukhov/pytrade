@@ -40,9 +40,9 @@ class WebQuikConnector:
         if getattr(self, 'is_initialized', False):
             return
         self.is_initialized = True
-        self._conn = config["conn"]
-        self._passwd = config["passwd"]
-        self._account = config["account"]
+        self._conn = config["connector.webquik.url"]
+        self._passwd = config["connector.webquik.passwd"]
+        self._account = config["connector.webquik.account"]
         self._logger = logging.getLogger(__name__)
 
         # Create websocket, do not open and run here

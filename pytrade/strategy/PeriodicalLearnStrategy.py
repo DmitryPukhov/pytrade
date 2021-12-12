@@ -4,6 +4,7 @@ import logging
 import pandas as pd
 
 from broker.Broker import Broker
+from connector.CsvFeedConnector import CsvFeedConnector
 from feed.Feed import Feed
 from model.feed.Asset import Asset
 from model.feed.Level2 import Level2
@@ -25,30 +26,43 @@ class PeriodicalLearnStrategy:
         self._logger = logging.getLogger(__name__)
         self._feed = feed
         self._broker = broker
-        self.asset = Asset(config['sec_class'], config['sec_code'])
-        #self._last_big_learn_time = datetime.min
-        self._last_big_learn_time = None
+        self.asset = Asset(config['trade.asset.sec_class'], config['trade.asset.sec_code'])
+        # self._last_big_learn_time = datetime.min
+        self._last_learn_time = None
         # todo:: parameterise
         self._interval_big_learn = timedelta(seconds=10)
         self._interval_small_learn = timedelta(hours=2)
+        self._csv_connector = CsvFeedConnector(config)
         self._feed.subscribe_feed(self.asset, self)
         self._logger.info(f"Strategy initialized with initial learn interval {self._interval_big_learn},"
                           f" additional learn interval ${self._interval_small_learn}")
 
-    def big_learn(self):
-        """
-        Learn on all the data received
-        """
-        self._logger.info("Starting big learn")
+    def learn(self):
+        _, quotes, level2 = self._csv_connector.read_csvs()
+        quotes.set_index(["ticker"], append=True,inplace=True)
+        level2.set_index(["ticker"], append=True,inplace=True)
+        self.learn_on(quotes, level2)
 
-        # Feature engineering
-        level2_features = Level2Features().level2_buckets(self._feed.level2)
-        target_features = TargetFeatures().min_max_future(self._feed.quotes, 5, 'min')
-        price_features = PriceFeatures().prices(self._feed.quotes)
+    def learn_on(self, quotes: pd.DataFrame, level2: pd.DataFrame):
+        self._logger.info("Starting feature engineering")
+        level2_features = Level2Features().level2_buckets(level2)
+        target_features = TargetFeatures().min_max_future(quotes, 5, 'min')
+        price_features = PriceFeatures().prices(quotes)
+        features = pd.merge_asof(price_features, level2_features, left_on="datetime", right_on="datetime",
+                                 tolerance=pd.Timedelta("1 min"))
+        self._logger.info("Completed feature engineering")
+        return features, target_features
+
+    def periodical_learn(self):
+        """
+        Learn on last data we have
+        """
+        self._logger.info("Starting periodical learn")
+        self.learn_on(self._feed.quotes, self._feed.level2)
 
         # Set last learning time to the last quote time
-        self._last_big_learn_time = self._feed.quotes.index[-1][0]
-        self._logger.info(f"Completed big learn, last time: {self._last_big_learn_time}")
+        self._last_learn_time = self._feed.quotes.index[-1][0]
+        self._logger.info(f"Completed periodical learn, last time: {self._last_learn_time}")
 
     def run(self):
         self._logger.info("Running")
@@ -70,10 +84,10 @@ class PeriodicalLearnStrategy:
         Got a new quote. self.feed.quotes contains all quotes including this one
         """
         self._logger.debug(f"Got new quote: {quote}")
-        if not self._last_big_learn_time:
-            self._last_big_learn_time = quote.dt
-        if (quote.dt - self._last_big_learn_time) >= self._interval_big_learn:
-            self.big_learn()
+        if not self._last_learn_time:
+            self._last_learn_time = quote.dt
+        if (quote.dt - self._last_learn_time) >= self._interval_big_learn:
+            self.periodical_learn()
 
     def on_level2(self, level2: Level2):
         """

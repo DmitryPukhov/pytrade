@@ -16,12 +16,12 @@ class CsvFeedConnector:
     Reads the data from csv
     """
 
-    def __init__(self, config):
+    def __init__(self, config, candles_path=None, quotes_path=None, level2_path=None):
         self._logger = logging.getLogger(__name__)
         self._logger.info("Init " + __name__)
-        self.candles_path = config["csv_feed_candles"]
-        self.quotes_path = config["csv_feed_quotes"]
-        self.level2_path = config["csv_feed_level2"]
+        self.candles_path = candles_path or config["feed.csv.candles"]
+        self.quotes_path = quotes_path or config["feed.csv.quotes"]
+        self.level2_path = level2_path or config["feed.csv.level2"]
 
         # Subscribers for data feed. {(class_code, sec_code): callback_func}
         self._feed_subscribers = collections.defaultdict(list)
@@ -32,16 +32,17 @@ class CsvFeedConnector:
     def subscribe_feed(self, asset, subscriber):
         self._feed_subscribers[asset].append(subscriber)
 
-    def read_csvs(self):
+    def read_csvs(self) -> (
+            pd.DataFrame, pd.DataFrame, pd.DataFrame):
         # Read candles
         self._logger.info(f"Read candles from {self.candles_path}")
         self.candles = pd.read_csv(self.candles_path, parse_dates=True,
                                    names=['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
                                    index_col=['datetime'])
         self.candles = self.candles[~self.candles.index.duplicated(keep='first')].sort_index()
-        self._logger.info(f"Read quotes from {self.quotes_path}")
 
         # Read quotes
+        self._logger.info(f"Read quotes from {self.quotes_path}")
         self.quotes = pd.read_csv(self.quotes_path, parse_dates=True,
                                   names=['datetime', 'ticker', 'bid', 'ask', 'last', 'last_change'],
                                   index_col=['datetime'])
@@ -51,6 +52,7 @@ class CsvFeedConnector:
         self._logger.info(f"Read level2 from {self.level2_path}")
         self.level2 = pd.read_csv(self.level2_path, parse_dates=['datetime'],
                                   names=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
+        return self.candles, self.quotes, self.level2
 
     def run(self):
         # Read csvs to dataframes
@@ -88,7 +90,6 @@ class CsvFeedConnector:
         # Price, bid, ask
         level2_items = [Level2Item(data_item[2], data_item[3], data_item[4]) for data_item in data]
         return Level2(dt, asset, level2_items)
-
 
     @staticmethod
     def _ohlcv_of(dt: datetime, data: dict) -> Ohlcv:

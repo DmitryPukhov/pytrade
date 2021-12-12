@@ -11,6 +11,7 @@ from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.CsvFeedConnector import CsvFeedConnector
 from connector.EmptyBrokerConnector import EmptyBrokerConnector
 from connector.MemoryBrokerConnector import MemoryBrokerConnector
+from bunch import bunchify
 
 from feed.Feed import Feed
 from feed.Feed2Csv import Feed2Csv
@@ -26,9 +27,8 @@ class App:
     def __init__(self):
         # Load config respecting the order: defaults, app.yaml, environment vars
         config = self._load_config()
-
         # Logger set up
-        self._init_logger(config["log_dir"])
+        self._init_logger(config["log.dir"])
         self._logger.info("Initializing the App")
 
         # Feed and broker
@@ -36,21 +36,22 @@ class App:
         feed = Feed(self._feed_connector)
         broker = Broker(self._broker_connector)
 
-        if config["is_interop"]:
+        if config["interop.is_interop"]:
             self._init_interop(config, feed, broker)
         if config["is_feed2csv"]:
             self._feed2csv = Feed2Csv(feed)
 
         # Dynamically create the strategy by the name from config
         self._init_strategy(config, feed, broker)
+        self._action = config["app.action"]
 
     def _init_connectors(self, config):
         """
         Dynamically set up feed and broker connectors from config
         """
         self._logger.info("Init broker and feed connectors")
-        self._broker_connector = globals()[config["broker_connector"]](config)
-        self._feed_connector = globals()[config["feed_connector"]](config)
+        self._broker_connector = globals()[config["broker.connector"]](config)
+        self._feed_connector = globals()[config["feed.connector"]](config)
 
     def _init_strategy(self, config, feed, broker):
         name = config['strategy']
@@ -59,7 +60,7 @@ class App:
 
     def _init_interop(self, config, feed, broker):
         self._logger.info("Configuring interop mode")
-        rabbit_host = config["rabbit_host"]
+        rabbit_host = config["interop.rabbit.host"]
         self._feed_interop = FeedInterop(feed=feed, rabbit_host=rabbit_host)
         self._broker_interop = BrokerInterop(broker=broker, rabbit_host=rabbit_host)
 
@@ -95,16 +96,31 @@ class App:
                 self._logger = logging.getLogger(__name__)
                 self._logger.info(f"Logging configured from {cfgpath}")
 
+    def run(self):
+        """
+        Run and trade, maybe using simulators
+        """
+        self._logger.info("Running")
+        self._feed_connector.run()
+        self._broker_connector.run()
+
+    def learn(self):
+        """
+        Learn, not run and trade
+        """
+        self._logger.info("Learning, not running")
+        self._strategy.learn()
+
     def main(self):
         """
         Application entry point
         """
-
+        getattr(self, self._action)()
         # Start strategy in a separate thread
         # Thread(target=self._strategy.run).start()
         # Run feed and broker connectors
-        self._feed_connector.run()
-        self._broker_connector.run()
+        # self._feed_connector.run()
+        # self._broker_connector.run()
 
 
 if __name__ == "__main__":

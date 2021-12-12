@@ -18,8 +18,8 @@ class WebQuikBroker:
     def __init__(self, config):
         self._logger = logging.getLogger(__name__)
 
-        self.client_code = config['client_code']
-        self.trade_account = config['trade_account']
+        self.client_code = config['connector.webquik.client_code']
+        self.trade_account = config['connector.webquik.trade_account']
 
         # 21001:"Заявки",
         # 21003:"Сделки",
