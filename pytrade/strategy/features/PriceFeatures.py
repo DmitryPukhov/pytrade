@@ -24,20 +24,20 @@ class PriceFeatures:
                 rolling.shift(shift - 1, freq)[['ask', 'bid']] \
                     .reindex(df2.index, method='nearest', tolerance=windowspec)
         return df2.sort_index()
-
-    def minmax_past2(self, quotes: pd.DataFrame, periods: int, freq: str, size) -> pd.DataFrame:
-        """
-        Quotes and candles features
-        """
-        # Drop asset column (we have only one asset) and resample to given intervals
-        rule = f"{periods} {freq}"
-        resampled = quotes.droplevel(1).resample(rule, closed='right', label='right')
-        df = pd.DataFrame()
-        df['max'] = resampled['ask'].max()
-        df['min'] = resampled['bid'].min()
-
-        for shift in range(1, size + 1):
-            df[f"-{shift}*{periods}{freq}_max"] = df.shift(shift - 1)['max']
-            df[f"-{shift}*{periods}{freq}_min"] = df.shift(shift - 1)['min']
-        df.drop(columns=['min', 'max'], inplace=True)
-        return df
+    #
+    # def minmax_past2(self, quotes: pd.DataFrame, periods: int, freq: str, size) -> pd.DataFrame:
+    #     """
+    #     Quotes and candles features
+    #     """
+    #     # Drop asset column (we have only one asset) and resample to given intervals
+    #     rule = f"{periods} {freq}"
+    #     resampled = quotes.droplevel(1).resample(rule, closed='right', label='right')
+    #     df = pd.DataFrame()
+    #     df['max'] = resampled['ask'].max()
+    #     df['min'] = resampled['bid'].min()
+    #
+    #     for shift in range(1, size + 1):
+    #         df[f"-{shift}*{periods}{freq}_max"] = df.shift(shift - 1)['max']
+    #         df[f"-{shift}*{periods}{freq}_min"] = df.shift(shift - 1)['min']
+    #     df.drop(columns=['min', 'max'], inplace=True)
+    #     return df

@@ -7,7 +7,7 @@ class Level2Features:
     Level2 feature engineering
     """
 
-    def level2_buckets(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:
+    def level2_buckets(self, level2: pd.DataFrame, l2size: int = 0, l2buckets: int = 20) -> pd.DataFrame:
         """
         Return dataframe with level2 feature columns. Colums are named "bucket<n>"
         where n in a number of price interval and value is summary volumes inside this price.
@@ -17,16 +17,16 @@ class Level2Features:
         """
         # Assign bucket number for each level2 item
         level2.set_index("datetime")
-        level2 = self.assign_bucket(level2, l2size, buckets)
+        level2 = self.assign_bucket(level2, l2size, l2buckets)
 
         # Pivot buckets to feature columns: bucket_1, bucket_2 etc. with summary bucket's volume as value.
-        maxbucket = buckets // 2 - 1
-        minbucket = -buckets // 2
+        maxbucket = l2buckets // 2 - 1
+        minbucket = -l2buckets // 2
         askfeatures = self.pivot_buckets(level2, 'ask_vol', 0, maxbucket)
         bidfeatures = self.pivot_buckets(level2, 'bid_vol', minbucket, -1)
 
         # Ask + bid buckets
-        level2features = bidfeatures.merge(askfeatures, on='datetime')
+        level2features = bidfeatures.merge(askfeatures, on='datetime').fillna(0)
         return level2features
 
     def assign_bucket(self, level2: pd.DataFrame, l2size: int = 0, buckets: int = 20) -> pd.DataFrame:

@@ -2,6 +2,7 @@
 from datetime import *
 import logging
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 from broker.Broker import Broker
 from connector.CsvFeedConnector import CsvFeedConnector
@@ -10,9 +11,11 @@ from model.feed.Asset import Asset
 from model.feed.Level2 import Level2
 from model.feed.Ohlcv import Ohlcv
 from model.feed.Quote import Quote
+from strategy.features.FeatureEngineering import FeatureEngineering
 from strategy.features.Level2Features import Level2Features
 from strategy.features.PriceFeatures import PriceFeatures
 from strategy.features.TargetFeatures import TargetFeatures
+from sklearn.model_selection import *
 
 pd.options.display.width = 0
 
@@ -39,19 +42,17 @@ class PeriodicalLearnStrategy:
 
     def learn(self):
         _, quotes, level2 = self._csv_connector.read_csvs()
-        quotes.set_index(["ticker"], append=True,inplace=True)
-        level2.set_index(["ticker"], append=True,inplace=True)
+        quotes.set_index(["ticker"], append=True, inplace=True)
+        level2.set_index(["ticker"], append=True, inplace=True)
         self.learn_on(quotes, level2)
 
     def learn_on(self, quotes: pd.DataFrame, level2: pd.DataFrame):
-        self._logger.info("Starting feature engineering")
-        level2_features = Level2Features().level2_buckets(level2)
-        target_features = TargetFeatures().min_max_future(quotes, 5, 'min')
-        price_features = PriceFeatures().prices(quotes)
-        features = pd.merge_asof(price_features, level2_features, left_on="datetime", right_on="datetime",
-                                 tolerance=pd.Timedelta("1 min"))
-        self._logger.info("Completed feature engineering")
-        return features, target_features
+        """Learning on price and level2 data"""
+        # Get X,y for train/test
+        X,y = FeatureEngineering().features_of(quotes, level2, 5, 'min', 3)
+        n_splits = 5
+        tscv = TimeSeriesSplit(n_splits)
+        # todo: build a model and learn
 
     def periodical_learn(self):
         """

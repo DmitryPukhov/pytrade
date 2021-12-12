@@ -36,7 +36,7 @@ class App:
         feed = Feed(self._feed_connector)
         broker = Broker(self._broker_connector)
 
-        if config["interop.is_interop"]:
+        if config["app.action"] == "run" and config["interop.is_interop"]:
             self._init_interop(config, feed, broker)
         if config["is_feed2csv"]:
             self._feed2csv = Feed2Csv(feed)

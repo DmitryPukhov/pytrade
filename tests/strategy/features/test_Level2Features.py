@@ -33,7 +33,7 @@ class TestLevel2Features(TestCase):
             {'datetime': datetime.fromisoformat('2021-11-26 17:39:00'), 'price': -0.9, 'ask_vol': None, 'bid_vol': 1}
         ])
 
-        features = Level2Features().level2_buckets(data, l2size=20, buckets=20)
+        features = Level2Features().level2_buckets(data, l2size=20, l2buckets=20)
         lst = features.values.tolist()
 
         # All features should be 1.0

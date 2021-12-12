@@ -6,3 +6,4 @@ sortedcontainers~=2.4.0
 numpy~=1.19.2
 matplotlib~=3.4.2
 plotly~=5.3.1
+scikit-learn~=1.0.1
