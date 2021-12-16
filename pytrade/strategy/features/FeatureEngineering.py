@@ -17,20 +17,20 @@ class FeatureEngineering:
 
     def features_of(self, quotes: pd.DataFrame, level2: pd.DataFrame, period: int, freq: str, size: int,
                     l2size: int = 0,
-                    l2buckets: int = 20) -> pd.DataFrame:
+                    l2buckets: int = 20) -> (pd.DataFrame, pd.DataFrame):
         """ Feature engineering from quotes and level2"""
         self._logger.info("Starting feature engineering")
         level2_features = Level2Features().level2_buckets(level2, l2size, l2buckets)
         price_features = PriceFeatures().minmax_past(quotes, period, freq, size)
         features = pd.merge_asof(price_features, level2_features, left_on="datetime", right_on="datetime",
                                  tolerance=pd.Timedelta("1 min"))
-        time_features=self.time_features(features)
-        features = features.join(time_features).set_index("datetime")
-        target = TargetFeatures().min_max_future(quotes, 5, 'min')
-        X = MinMaxScaler(feature_range=(0, 1)).fit_transform(features.values)
-        y = MinMaxScaler(feature_range=(0, 1)).fit(target.values)
+        time_features = self.time_features(features)
+        features = features.join(time_features).set_index("datetime").dropna()
+        target = TargetFeatures().min_max_future(quotes, 5, 'min').loc[features.index, :]
+        # X = MinMaxScaler(feature_range=(0, 1)).fit_transform(features.values)
+        # y = MinMaxScaler(feature_range=(0, 1)).fit(target.values)
         self._logger.info("Completed feature engineering")
-        return X, y
+        return features, target
 
     def time_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
