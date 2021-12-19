@@ -4,21 +4,23 @@ import logging
 
 import keras.models
 import pandas as pd
-from sklearn import preprocessing, svm
+import sklearn
+from sklearn import *
+from sklearn.metrics import *
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.arima.model import ARIMA
-from broker.Broker import Broker
-from connector.CsvFeedConnector import CsvFeedConnector
-from feed.Feed import Feed
-from model.feed.Asset import Asset
-from model.feed.Level2 import Level2
-from model.feed.Ohlcv import Ohlcv
-from model.feed.Quote import Quote
-from strategy.features.FeatureEngineering import FeatureEngineering
-from strategy.features.Level2Features import Level2Features
-from strategy.features.PriceFeatures import PriceFeatures
-from strategy.features.TargetFeatures import TargetFeatures
+from pytrade.broker.Broker import Broker
+from pytrade.connector.CsvFeedConnector import CsvFeedConnector
+from pytrade.feed.Feed import Feed
+from pytrade.model.feed.Asset import Asset
+from pytrade.model.feed.Level2 import Level2
+from pytrade.model.feed.Ohlcv import Ohlcv
+from pytrade.model.feed.Quote import Quote
+from pytrade.strategy.features.FeatureEngineering import FeatureEngineering
+from pytrade.strategy.features.Level2Features import Level2Features
+from pytrade.strategy.features.PriceFeatures import PriceFeatures
+from pytrade.strategy.features.TargetFeatures import TargetFeatures
 from sklearn.model_selection import *
 # example of training a final classification model
 from keras.models import Sequential
@@ -57,8 +59,9 @@ class PeriodicalLearnStrategy:
         model = Sequential()
         model.add(Dense(128,  input_dim=32, activation='relu'))
         model.add(Dense(256, activation='relu'))
-        model.add(Dense(2,  activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam')
+        model.add(Dense(2,  activation='relu'))
+        #model.compile(loss='binary_crossentropy', optimizer='adam')
+        model.compile(loss='mean_squared_error', optimizer='adam')
         return model
 
     def learn_on(self, quotes: pd.DataFrame, level2: pd.DataFrame):
@@ -73,9 +76,13 @@ class PeriodicalLearnStrategy:
         # Cross validation
         n_splits = 5
         tscv = TimeSeriesSplit(n_splits)
-        scores = cross_val_score(estimator=pipeline,X=X, y=y, cv=tscv, verbose=1, scoring='r2',n_jobs=1)
-        print(scores)
-        self._logger.info("split")
+        # scoring: r2, mse
+        self._logger.info(f"Possible scorings:{sorted(sklearn.metrics.SCORERS.keys())}")
+        scores = cross_val_score(estimator=pipeline,X=X, y=y, cv=tscv, verbose=1, scoring='r2',n_jobs=1, error_score='raise')
+        scores
+        #cv=cross_validate(estimator=pipeline,X=X, y=y, cv=tscv, verbose=1,scoring='r2')
+
+        self._logger.info(f"cross_val_score:{scores}")
         # todo: build a model and learn
 
     def periodical_learn(self):

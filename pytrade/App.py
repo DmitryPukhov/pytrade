@@ -11,7 +11,7 @@ from connector.quik.WebQuikBroker import WebQuikBroker
 from connector.CsvFeedConnector import CsvFeedConnector
 from connector.EmptyBrokerConnector import EmptyBrokerConnector
 from connector.MemoryBrokerConnector import MemoryBrokerConnector
-from bunch import bunchify
+
 
 from feed.Feed import Feed
 from feed.Feed2Csv import Feed2Csv
@@ -115,6 +115,7 @@ class App:
         """
         Application entry point
         """
+        self._logger.info("Starting the app")
         getattr(self, self._action)()
         # Start strategy in a separate thread
         # Thread(target=self._strategy.run).start()
