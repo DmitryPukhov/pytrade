@@ -25,7 +25,9 @@ class FeatureEngineering:
         features = pd.merge_asof(price_features, level2_features, left_on="datetime", right_on="datetime",
                                  tolerance=pd.Timedelta("1 min"))
         time_features = self.time_features(features)
-        features = features.join(time_features).set_index("datetime").dropna()
+        features = features.join(time_features).set_index("datetime")
+        features.replace([np.inf, -np.inf], np.nan, inplace=True)
+        features.dropna(inplace=True)
         target = TargetFeatures().min_max_future(quotes, 5, 'min').loc[features.index, :]
         # X = MinMaxScaler(feature_range=(0, 1)).fit_transform(features.values)
         # y = MinMaxScaler(feature_range=(0, 1)).fit(target.values)

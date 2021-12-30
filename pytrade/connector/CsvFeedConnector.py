@@ -3,7 +3,8 @@ import logging
 from datetime import datetime
 
 import pandas as pd
-
+import glob
+import os
 from model.feed.Asset import Asset
 from model.feed.Level2 import Level2
 from model.feed.Level2Item import Level2Item
@@ -36,22 +37,31 @@ class CsvFeedConnector:
             pd.DataFrame, pd.DataFrame, pd.DataFrame):
         # Read candles
         self._logger.info(f"Read candles from {self.candles_path}")
-        self.candles = pd.read_csv(self.candles_path, parse_dates=True,
-                                   names=['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
-                                   index_col=['datetime'])
+        files = glob.glob(os.path.join('', self.candles_path))
+        self.candles = pd.concat(map(lambda file: pd.read_csv(file, parse_dates=True,
+                                                              names=['datetime', 'ticker', 'open', 'high', 'low',
+                                                                     'close', 'volume'],
+                                                              index_col=['datetime']), files))
+
+        # self.candles = pd.read_csv(self.candles_path, parse_dates=True,
+        #                            names=['datetime', 'ticker', 'open', 'high', 'low', 'close', 'volume'],
+        #                            index_col=['datetime'])
         self.candles = self.candles[~self.candles.index.duplicated(keep='first')].sort_index()
 
         # Read quotes
         self._logger.info(f"Read quotes from {self.quotes_path}")
-        self.quotes = pd.read_csv(self.quotes_path, parse_dates=True,
-                                  names=['datetime', 'ticker', 'bid', 'ask', 'last', 'last_change'],
-                                  index_col=['datetime'])
+        files = glob.glob(os.path.join('', self.quotes_path))
+        self.quotes = pd.concat(map(lambda file: pd.read_csv(file, parse_dates=True,
+                                                             names=['datetime', 'ticker', 'bid', 'ask', 'last',
+                                                                    'last_change'],
+                                                             index_col=['datetime']), files))
         self.quotes = self.quotes[~self.quotes.index.duplicated(keep='first')].sort_index()
 
         # Read level2
+        files = glob.glob(os.path.join('', self.level2_path))
         self._logger.info(f"Read level2 from {self.level2_path}")
-        self.level2 = pd.read_csv(self.level2_path, parse_dates=['datetime'],
-                                  names=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol'])
+        self.level2 = pd.concat(map(lambda file: pd.read_csv(file, parse_dates=['datetime'],
+                                  names=['datetime', 'ticker', 'price', 'bid_vol', 'ask_vol']), files))
         return self.candles, self.quotes, self.level2
 
     def run(self):
@@ -111,36 +121,36 @@ class CsvFeedConnector:
             ask=data['ask'],
             last=data['last'],
             last_change=data['last_change'])
-
-    def preprocess(self):
-        # Pivot to create feature columns of level2 prices and volumes
-        df = self.level2
-        df["num"] = df.groupby("datetime").cumcount() + 1
-        price_pivoted = df.pivot(index="datetime", columns="num", values="price")
-        price_pivoted.columns = "price" + price_pivoted.columns.astype(str)
-        price_pivoted["base"] = (price_pivoted["price10"] + price_pivoted["price11"]) / 2
-        for n in range(1, len([c for c in price_pivoted.columns if c.startswith("price")]) + 1):
-            col = "price" + str(n)
-            price_pivoted[col] = price_pivoted[col] - price_pivoted["base"]
-
-        bid_vol_pivoted = df.pivot(index="datetime", columns="num", values="bid_vol")
-        bid_vol_pivoted.columns = "bid_vol" + bid_vol_pivoted.columns.astype(str)
-
-        ask_vol_pivoted = df.pivot(index="datetime", columns="num", values="ask_vol")
-        ask_vol_pivoted.columns = "as_vol" + ask_vol_pivoted.columns.astype(str)
-
-        pivoted = price_pivoted.join(bid_vol_pivoted).join(ask_vol_pivoted)
-        # Form level2
-
-        # Reverse, rolling and reverse back to calc future max and min
-        # Add future min/max
-        predict_window = "2min"
-        self.quotes["nextmax"] = self.quotes["ask"][::-1].rolling(predict_window).max()[::-1]
-        self.quotes["nextmin"] = self.quotes["ask"][::-1].rolling(predict_window).min()[::-1]
-
-        # Add last closest
-        m = pd.merge_asof(self.quotes, self.candles, left_index=True, right_index=True, tolerance=pd.Timedelta("1 min"))
-        print(m.head(10))
+    #
+    # def preprocess(self):
+    #     # Pivot to create feature columns of level2 prices and volumes
+    #     df = self.level2
+    #     df["num"] = df.groupby("datetime").cumcount() + 1
+    #     price_pivoted = df.pivot(index="datetime", columns="num", values="price")
+    #     price_pivoted.columns = "price" + price_pivoted.columns.astype(str)
+    #     price_pivoted["base"] = (price_pivoted["price10"] + price_pivoted["price11"]) / 2
+    #     for n in range(1, len([c for c in price_pivoted.columns if c.startswith("price")]) + 1):
+    #         col = "price" + str(n)
+    #         price_pivoted[col] = price_pivoted[col] - price_pivoted["base"]
+    #
+    #     bid_vol_pivoted = df.pivot(index="datetime", columns="num", values="bid_vol")
+    #     bid_vol_pivoted.columns = "bid_vol" + bid_vol_pivoted.columns.astype(str)
+    #
+    #     ask_vol_pivoted = df.pivot(index="datetime", columns="num", values="ask_vol")
+    #     ask_vol_pivoted.columns = "as_vol" + ask_vol_pivoted.columns.astype(str)
+    #
+    #     pivoted = price_pivoted.join(bid_vol_pivoted).join(ask_vol_pivoted)
+    #     # Form level2
+    #
+    #     # Reverse, rolling and reverse back to calc future max and min
+    #     # Add future min/max
+    #     predict_window = "2min"
+    #     self.quotes["nextmax"] = self.quotes["ask"][::-1].rolling(predict_window).max()[::-1]
+    #     self.quotes["nextmin"] = self.quotes["ask"][::-1].rolling(predict_window).min()[::-1]
+    #
+    #     # Add last closest
+    #     m = pd.merge_asof(self.quotes, self.candles, left_index=True, right_index=True, tolerance=pd.Timedelta("1 min"))
+    #     print(m.head(10))
 
 # # # Test code todo: remove
 # base_dir = "../data/"

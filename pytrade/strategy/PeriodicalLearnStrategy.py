@@ -5,7 +5,7 @@ import logging
 import keras.models
 import pandas as pd
 from sklearn import preprocessing, svm
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.arima.model import ARIMA
 from broker.Broker import Broker
@@ -20,9 +20,11 @@ from strategy.features.Level2Features import Level2Features
 from strategy.features.PriceFeatures import PriceFeatures
 from strategy.features.TargetFeatures import TargetFeatures
 from sklearn.model_selection import *
+import numpy as np
 # example of training a final classification model
 from keras.models import Sequential
 from keras.layers import Dense
+import tensorflow as tf
 
 pd.options.display.width = 0
 
@@ -46,44 +48,66 @@ class PeriodicalLearnStrategy:
         self._feed.subscribe_feed(self.asset, self)
         self._logger.info(f"Strategy initialized with initial learn interval {self._interval_big_learn},"
                           f" additional learn interval ${self._interval_small_learn}")
+        self.pipeline=self.pipeline()
+
+    def pipeline(self):
+        # Create model
+        model = Sequential()
+        model.add(Dense(128, input_dim=32, activation='relu'))
+        model.add(Dense(512, activation='relu'))
+        model.add(Dense(1024, activation='relu'))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(2,  activation='relu'))
+        model.compile(loss='mean_squared_logarithmic_error', optimizer='adam')
+        # Create pipeline
+        return make_pipeline(preprocessing.MinMaxScaler(), model)
 
     def learn(self):
+        """Learn on csv data"""
+        # Read csv data
         _, quotes, level2 = self._csv_connector.read_csvs()
         quotes.set_index(["ticker"], append=True, inplace=True)
         level2.set_index(["ticker"], append=True, inplace=True)
-        self.learn_on(quotes, level2)
 
-    def model(self):
-        model = Sequential()
-        model.add(Dense(128,  input_dim=32, activation='relu'))
-        model.add(Dense(256, activation='relu'))
-        model.add(Dense(2,  activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam')
-        return model
-
-    def learn_on(self, quotes: pd.DataFrame, level2: pd.DataFrame):
-        """Learning on price and level2 data"""
-        # Get unscaled X,y for train/test
+        # Create the model
         X, y = FeatureEngineering().features_of(quotes, level2, 5, 'min', 3)
-        # Pipeline: scaler + model
-        model = self.model()
-        #model.fit(X,y)
-        pipeline = make_pipeline(preprocessing.MinMaxScaler(), model)
+        # Learn
+        self.learn_all(X, y)
 
+    def learn_day_by_day(self, X: pd.DataFrame, y: pd.DataFrame):
+        """ Learn on prepared data, each learn cycle is inside one day"""
         # Cross validation
-        n_splits = 5
+        n_splits = 15
         tscv = TimeSeriesSplit(n_splits)
-        scores = cross_val_score(estimator=pipeline,X=X, y=y, cv=tscv, verbose=1, scoring='r2',n_jobs=1)
+        dates = np.unique(X.index.date)
+        self._logger.info(f"Learning on dates {dates}")
+        for date in dates:
+            X_date = X[X.index.date == date]
+            y_date = y[y.index.date == date]
+            if X_date.empty or y_date.empty:
+                self._logger.info(f"Data for {date} is empty")
+                continue
+            self._logger.info(f"Learning on {date} data")
+            scores = cross_val_score(estimator=self.pipeline, X=X_date, y=y_date, cv=tscv, verbose=1, scoring='r2', n_jobs=4)
+            print(scores)
+
+    def learn_all(self, X: pd.DataFrame, y: pd.DataFrame):
+        """Learning on all price and level2 data"""
+        self._logger.info("Learn on whole data")
+        # Cross validation
+        n_splits = 100
+        tscv = TimeSeriesSplit(n_splits)
+        scores = cross_val_score(estimator=self.pipeline, X=X, y=y, cv=tscv, verbose=1, scoring='r2', n_jobs=1)
         print(scores)
         self._logger.info("split")
-        # todo: build a model and learn
 
     def periodical_learn(self):
         """
         Learn on last data we have
         """
         self._logger.info("Starting periodical learn")
-        self.learn_on(self._feed.quotes, self._feed.level2)
+        X, y = FeatureEngineering().features_of(self._feed.quotes, self._feed.level2, 5, 'min', 3)
+        self.learn_all(X,y)
 
         # Set last learning time to the last quote time
         self._last_learn_time = self._feed.quotes.index[-1][0]
