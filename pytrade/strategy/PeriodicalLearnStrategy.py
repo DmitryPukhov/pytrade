@@ -4,7 +4,9 @@ import logging
 
 import keras.models
 import pandas as pd
+import sklearn
 from sklearn import preprocessing, svm
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.arima.model import ARIMA
@@ -48,19 +50,22 @@ class PeriodicalLearnStrategy:
         self._feed.subscribe_feed(self.asset, self)
         self._logger.info(f"Strategy initialized with initial learn interval {self._interval_big_learn},"
                           f" additional learn interval ${self._interval_small_learn}")
-        self.pipeline=self.pipeline()
+        self.model = self.model()
+        self.pipeline = self.pipeline()
 
-    def pipeline(self):
-        # Create model
+    def model(self):
         model = Sequential()
         model.add(Dense(128, input_dim=32, activation='relu'))
         model.add(Dense(512, activation='relu'))
         model.add(Dense(1024, activation='relu'))
         model.add(Dense(32, activation='relu'))
-        model.add(Dense(2,  activation='relu'))
+        model.add(Dense(2, activation='relu'))
         model.compile(loss='mean_squared_logarithmic_error', optimizer='adam')
-        # Create pipeline
-        return make_pipeline(preprocessing.MinMaxScaler(), model)
+        return model
+
+    def pipeline(self):
+           # Create pipeline
+        return make_pipeline(preprocessing.MinMaxScaler(), self.model)
 
     def learn(self):
         """Learn on csv data"""
@@ -71,8 +76,10 @@ class PeriodicalLearnStrategy:
 
         # Create the model
         X, y = FeatureEngineering().features_of(quotes, level2, 5, 'min', 3)
+
         # Learn
         self.learn_all(X, y)
+        # Todo: save weights
 
     def learn_day_by_day(self, X: pd.DataFrame, y: pd.DataFrame):
         """ Learn on prepared data, each learn cycle is inside one day"""
@@ -88,7 +95,8 @@ class PeriodicalLearnStrategy:
                 self._logger.info(f"Data for {date} is empty")
                 continue
             self._logger.info(f"Learning on {date} data")
-            scores = cross_val_score(estimator=self.pipeline, X=X_date, y=y_date, cv=tscv, verbose=1, scoring='r2', n_jobs=4)
+            scores = cross_val_score(estimator=self.pipeline, X=X_date, y=y_date, cv=tscv, verbose=1, scoring='r2',
+                                     n_jobs=4)
             print(scores)
 
     def learn_all(self, X: pd.DataFrame, y: pd.DataFrame):
@@ -97,7 +105,11 @@ class PeriodicalLearnStrategy:
         # Cross validation
         n_splits = 100
         tscv = TimeSeriesSplit(n_splits)
-        scores = cross_val_score(estimator=self.pipeline, X=X, y=y, cv=tscv, verbose=1, scoring='r2', n_jobs=1)
+        print(sorted(sklearn.metrics.SCORERS.keys()))
+        # scores = cross_val_score(estimator=self.pipeline, X=X, y=y, cv=tscv, verbose=1, scoring='r2', n_jobs=4)
+        # print(sorted(sklearn.metrics.SCORERS.keys()))
+        scores = cross_val_score(estimator=self.pipeline, X=X, y=y, cv=tscv, verbose=1, scoring='explained_variance',
+                                 n_jobs=4)
         print(scores)
         self._logger.info("split")
 
@@ -107,7 +119,7 @@ class PeriodicalLearnStrategy:
         """
         self._logger.info("Starting periodical learn")
         X, y = FeatureEngineering().features_of(self._feed.quotes, self._feed.level2, 5, 'min', 3)
-        self.learn_all(X,y)
+        self.learn_all(X, y)
 
         # Set last learning time to the last quote time
         self._last_learn_time = self._feed.quotes.index[-1][0]

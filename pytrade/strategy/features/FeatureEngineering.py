@@ -29,7 +29,10 @@ class FeatureEngineering:
         features.replace([np.inf, -np.inf], np.nan, inplace=True)
         features.dropna(inplace=True)
         target = TargetFeatures().min_max_future(quotes, 5, 'min').loc[features.index, :]
-        # X = MinMaxScaler(feature_range=(0, 1)).fit_transform(features.values)
+        target.replace([np.inf, -np.inf], np.nan, inplace=True)
+        target.dropna(inplace=True)
+        features = features.loc[target.index,:]
+        #X = MinMaxScaler(feature_range=(0, 1)).fit_transform(features.values)
         # y = MinMaxScaler(feature_range=(0, 1)).fit(target.values)
         self._logger.info("Completed feature engineering")
         return features, target
