@@ -24,9 +24,9 @@ strategy: PeriodicalLearnStrategy
 
 feed.connector: WebQuikFeed
 #feed_connector: CsvFeedConnector
-#csv_feed_candles: data/QJSIM_SBER_candles_2021-11-07.csv
-#csv_feed_quotes: data/QJSIM_SBER_quotes_2021-11-07.csv
-#csv_feed_level2: data/QJSIM_SBER_level2_2021-11-07.csv
+feed.csv.candles: data/QJSIM_SBER_candles_2021-11-07.csv
+feed.csv.quotes: data/QJSIM_SBER_quotes_2021-11-07.csv
+feed.csv.level2: data/QJSIM_SBER_level2_2021-11-07.csv
 
 broker.connector: WebQuikBroker
 #broker_connector: EmptyBrokerConnector
