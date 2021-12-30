@@ -2,6 +2,7 @@
 # Config files
 /pytrade/cfg/app.yaml
 /pytrade/cfg/log.cfg
+/pytrade/weights
 
 # Project and logs
 .vscode

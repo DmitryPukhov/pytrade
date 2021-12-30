@@ -1,4 +1,6 @@
 # import talib as ta
+import glob
+import os.path
 from datetime import *
 import logging
 
@@ -50,21 +52,33 @@ class PeriodicalLearnStrategy:
         self._feed.subscribe_feed(self.asset, self)
         self._logger.info(f"Strategy initialized with initial learn interval {self._interval_big_learn},"
                           f" additional learn interval ${self._interval_small_learn}")
+        self.weights_path = 'weights/model1'
         self.model = self.model()
         self.pipeline = self.pipeline()
 
     def model(self):
+        # loss='mean_squared_logarithmic_error'
+        loss = 'huber'
+        # Add layers
         model = Sequential()
         model.add(Dense(128, input_dim=32, activation='relu'))
         model.add(Dense(512, activation='relu'))
         model.add(Dense(1024, activation='relu'))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(2, activation='relu'))
-        model.compile(loss='mean_squared_logarithmic_error', optimizer='adam')
+        model.compile(loss=loss, optimizer='adam')
+
+        # Load weights
+
+        if os.path.exists(self.weights_path+'.index'):
+            self._logger.info(f"Load model weights in {self.weights_path}")
+            model.load_weights(self.weights_path)
+        else:
+            self._logger.info(f"Model weights not found in {self.weights_path}")
         return model
 
     def pipeline(self):
-           # Create pipeline
+        # Create pipeline
         return make_pipeline(preprocessing.MinMaxScaler(), self.model)
 
     def learn(self):
@@ -79,7 +93,10 @@ class PeriodicalLearnStrategy:
 
         # Learn
         self.learn_all(X, y)
-        # Todo: save weights
+
+        # Save weights
+        self._logger.info(f"Save model weights to {self.weights_path}")
+        self.model.save_weights(self.weights_path)
 
     def learn_day_by_day(self, X: pd.DataFrame, y: pd.DataFrame):
         """ Learn on prepared data, each learn cycle is inside one day"""
